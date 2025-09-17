@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import './App.css'
+import GameScene from './game/GameScene';
 
 const GridTanks = () => {
-  const [currentScene, setCurrentScene] = useState('menu'); // 'menu', 'game', 'howto', 'leaderboard'
-  const [gameState, setGameState] = useState(null);
+  const [currentScene, setCurrentScene] = useState('game'); // 'menu', 'game', 'howto', 'leaderboard'
 
   // Scene switching functions
   const switchToGame = () => {
     console.log('Starting game...');
     setCurrentScene('game');
-    // TODO: Initialize game, call start-game API
   };
 
   const switchToHowToPlay = () => {
@@ -36,6 +35,7 @@ const GridTanks = () => {
       <div className="particle"></div>
       <div className="particle"></div>
 
+      <div className="tank-silhouette"></div>
       <div className="tank-silhouette"></div>
       <div className="tank-silhouette"></div>
 
@@ -74,19 +74,6 @@ const GridTanks = () => {
           <span className="stat-number">3</span>
           Lives
         </div>
-      </div>
-    </div>
-  );
-
-  // Game Scene Component (placeholder)
-  const GameScene = () => (
-    <div className="scene-basic">
-      <div className="game-placeholder">
-        <h2>Game Scene</h2>
-        <p>Currently under development!</p>
-        <button className="back-button" onClick={switchToMenu}>
-          Back to Menu
-        </button>
       </div>
     </div>
   );

@@ -23,24 +23,24 @@
 }
 
 .particle:nth-child(2) {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   top: 20%;
   left: 10%;
   animation-delay: 0s;
 }
 
 .particle:nth-child(3) {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   top: 60%;
   left: 80%;
   animation-delay: 2s;
 }
 
 .particle:nth-child(4) {
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   top: 80%;
   left: 20%;
   animation-delay: 4s;
@@ -65,10 +65,10 @@
   content: '';
   position: absolute;
   top: 50%;
-  right: -12px;
+  right: -20px;
   transform: translateY(-50%);
-  width: 20px;
-  height: 3px;
+  width: 35px;
+  height: 7px;
   background: rgba(255, 107, 53, 0.15);
   border-radius: 2px;
 }
@@ -81,6 +81,12 @@
 
 .tank-silhouette:nth-child(6) {
   top: 12%;
+  right: 8%;
+  animation: fadeInOut 8s ease-in-out infinite;
+}
+
+.tank-silhouette:nth-child(7) {
+  top: 80%;
   right: 8%;
   animation: fadeInOut 8s ease-in-out infinite;
 }
@@ -311,18 +317,8 @@
   color: #a0aec0;
 }
 
-/* Game Scene Placeholder */
-.game-placeholder {
-  text-align: center;
-}
-
-.game-placeholder h2 {
-  font-size: 2rem;
-  margin-bottom: 20px;
-  color: #FF6B35;
-}
-
-.game-placeholder p {
-  margin-bottom: 20px;
-  color: #a0aec0;
+/* Game Scene */
+.game-container {
+  width: 800;
+  height: 600;
 }

@@ -4,7 +4,7 @@ import { Bullet } from "./bullets/Bullet.js"
 export class Player {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
-        this.body.tint = 0x0000ff;
+        this.body.tint = 0x007ACC;
         this.id = 3;
 
         this.setPosition(x, y);
@@ -21,7 +21,7 @@ export class Player {
         this.maxBullets = 5;
 
         this.turret = new PIXI.Graphics();
-        this.turret.beginFill(0x0000ff);
+        this.turret.beginFill(0x007ACC);
         this.turret.drawRect(0, -2, 20, 4);
         this.turret.endFill();
         this.turret.x = this.body.width / 2 - this.turret.height / 2; // Center of the tank's width

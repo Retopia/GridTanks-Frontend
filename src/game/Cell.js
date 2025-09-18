@@ -19,9 +19,17 @@ export class Cell {
             this.body = cell;
         } else if (this.cellType === 'hole') {
             let hole = new PIXI.Graphics();
-            hole.beginFill(0x101010);
-            hole.drawCircle(this.width / 2, this.height / 2, Math.min(this.width, this.height) / 2 * 0.9);
+
+            // Outer ring (slightly lighter)
+            hole.beginFill(0x1a1a1a);
+            hole.drawCircle(this.width / 2, this.height / 2, Math.min(this.width, this.height) / 2 * 0.85);
             hole.endFill();
+
+            // Inner hole (darker)
+            hole.beginFill(0x050505);
+            hole.drawCircle(this.width / 2, this.height / 2, Math.min(this.width, this.height) / 2 * 0.7);
+            hole.endFill();
+
             this.body = hole;
         }
     }
@@ -49,7 +57,7 @@ export class Cell {
             case 'path':
                 return 0x1a2332;
             case 'player':
-                return 0x0000dd;
+                return 0x007ACC;
             case 'brown':
                 return 0xac6902;
             case 'grey':

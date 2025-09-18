@@ -4,7 +4,8 @@ import { Bullet } from "./bullets/Bullet.js"
 export class Player {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
-        this.body.tint = 0x0000dd;
+        this.body.tint = 0x0000ff;
+        this.id = 3;
 
         this.setPosition(x, y);
         this.setSize(width, height);

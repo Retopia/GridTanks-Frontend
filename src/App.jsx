@@ -3,7 +3,7 @@ import './App.css'
 import GameScene from './game/GameScene';
 
 const GridTanks = () => {
-  const [currentScene, setCurrentScene] = useState('game'); // 'menu', 'game', 'howto', 'leaderboard'
+  const [currentScene, setCurrentScene] = useState('menu'); // 'menu', 'game', 'howto', 'leaderboard'
 
   // Scene switching functions
   const switchToGame = () => {

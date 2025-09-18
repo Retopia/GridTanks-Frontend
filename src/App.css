@@ -319,6 +319,15 @@
 
 /* Game Scene */
 .game-container {
-  width: 800;
-  height: 600;
+  width: 800px;
+  height: 600px;
+  background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
+  position: relative;
+  border-radius: 8px; /* Optional: rounded corners */
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); /* Optional: shadow */
+}
+
+/* Make the PIXI canvas transparent so the gradient shows through */
+#gameContainer canvas {
+  background: transparent !important;
 }

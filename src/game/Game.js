@@ -6,15 +6,24 @@ import { GreenTank } from "./enemies/GreenTank.js";
 import { PinkTank } from "./enemies/PinkTank.js";
 import { BlackTank } from "./enemies/BlackTank.js";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const TANK_TYPES = {
+  3: "player",   // Player Tank - Speed: 2, Bullets: 5, Type: Normal
+  4: "brown",    // Brown Tank - Speed: 0, Bullets: 1, Type: Normal
+  5: "grey",     // Grey Tank - Speed: 1, Bullets: 1, Type: Normal
+  6: "green",    // Green Tank - Speed: 1, Bullets: 1, Type: Fire
+  7: "pink",     // Pink Tank - Speed: 2, Bullets: 5, Type: Normal
+  8: "black",    // Black Tank - Speed: 3, Bullets: 5, Type: Fire
+}
+
 export class Game {
   constructor() {
     this.app = new PIXI.Application({
       width: 800,
       height: 600,
-      backgroundColor: 0xffffff
     });
 
-    this.file = "/Maps/level0.txt"; // Start from level 1
     this.currentLevel = 0; // Add a property to track the current level
 
     this.physicalMap = []; // All the physical walls
@@ -30,14 +39,13 @@ export class Game {
     this.mouseY = 0;
     this.player = new Player(700, 100, 18, 18, 2, this.app);
     this.loadedLevel = false;
-
-    this.stepCount = 0;
+    this.run_id = null;
 
     this.teamA = [];
     this.teamB = [];
 
     this.isPlayerPlayable = true;
-    this.playerSelectorValue = 'black';
+    this.playerSelectorValue = 'player';
 
     // Add a property to track the last frame time
     this.lastFrameTime = performance.now(); // Start with the current time
@@ -45,23 +53,33 @@ export class Game {
     this.totalElapsedTime = 0;
   }
 
-  setup() {
+  setup(run_id) {
+    this.run_id = run_id;
     document.getElementById('gameContainer').appendChild(this.app.view);
 
-    if (this.file != null) {
-      this.loadMapFromPath(this.file).then(loadedData => {
-        if (loadedData) {
-          this.initGame(loadedData);
+    // Load level from server instead of file
+    this.loadLevelFromServer().then(loadedData => {
+      if (loadedData) {
+        if (loadedData.game_complete) {
+          console.log('Game completed! Final level:', loadedData.final_level);
+          // Handle game completions
+        } else {
+          // Parse the map data and initialize game
+          const parsedData = this.parseMapData(loadedData.mapData);
+          this.initGame(parsedData);
         }
-      });
-    }
+      }
+    }).catch(error => {
+      console.error('Failed to load level from server:', error);
+      // Show error and return to main menu
+    });
   }
 
   initGame(loadedData) {
     this.updateMap(loadedData);
 
     this.app.ticker.speed = 1.0;
-    this.app.ticker.maxFPS = 0;
+    this.app.ticker.maxFPS = 60;
     this.app.ticker.add((delta) => this.gameLoop(delta));
 
     this.app.renderer.plugins.interaction.on('pointermove', (e) => {
@@ -85,11 +103,59 @@ export class Game {
     });
   }
 
+  async loadLevelFromServer() {
+    const response = await fetch(`${API_BASE_URL}/level`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: this.run_id })
+    });
+
+    const contentType = response.headers.get('content-type');
+
+    if (contentType && contentType.includes('application/json')) {
+      // Game complete case
+      return await response.json();
+    } else {
+      // Map data cases
+      const mapText = await response.text();
+      return { mapData: mapText };
+    }
+  }
+
+  parseMapData(mapData) {
+    let fileContent = mapData;
+    // Normalize newlines (convert all to Unix-style)
+    fileContent = fileContent.replace(/\r\n/g, '\n');
+
+    // Split the file content into wall data and collision line data
+    const sections = fileContent.trim().split('\n\n');
+
+    let wallData = sections[0];
+    let lineData = sections.length > 1 ? sections[1] : '';
+
+    // Process wall data
+    let loadedMap = wallData.split('\n').map(row => row.trim().split(' ').map(Number));
+
+    // Process collision line data
+    let loadedLines = [];
+    if (lineData) {
+      lineData.split('\n').forEach(line => {
+        let coords = line.split(' ').map(Number);
+        if (coords.length === 4) { // Ensure the line has exactly four coordinates
+          loadedLines.push(coords);
+        }
+      });
+    }
+
+    return { map: loadedMap, lines: loadedLines };
+  }
+
+  // Adds gridlines, purely aesthetics
   addGridlines() {
-    // Adds gridlines, purely aesthetics
     if (this.enableGridLines) {
       let gridLines = new PIXI.Graphics();
-      gridLines.lineStyle(1, 0xcccccc, 1);
+      gridLines.lineStyle(1, 0x2d3748, 0.8);
+
       for (let i = 0; i <= this.rows; i++) {
         gridLines.moveTo(0, i * this.cellHeight);
         gridLines.lineTo(this.cols * this.cellWidth, i * this.cellHeight);
@@ -228,43 +294,6 @@ export class Game {
     }
   }
 
-  async loadMapFromPath(filePath) {
-    try {
-      const response = await fetch(filePath);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      let fileContent = await response.text();
-      // Normalize newlines (convert all to Unix-style)
-      fileContent = fileContent.replace(/\r\n/g, '\n');
-
-      // Split the file content into wall data and collision line data
-      const sections = fileContent.trim().split('\n\n');
-
-      let wallData = sections[0];
-      let lineData = sections.length > 1 ? sections[1] : '';
-
-      // Process wall data
-      let loadedMap = wallData.split('\n').map(row => row.trim().split(' ').map(Number));
-
-      // Process collision line data
-      let loadedLines = [];
-      if (lineData) {
-        lineData.split('\n').forEach(line => {
-          let coords = line.split(' ').map(Number);
-          if (coords.length === 4) { // Ensure the line has exactly four coordinates
-            loadedLines.push(coords);
-          }
-        });
-      }
-
-      return { map: loadedMap, lines: loadedLines };
-    } catch (error) {
-      console.error("Error loading file: ", error);
-      return null;
-    }
-  }
-
   // path = 0
   // wall = 1
   // hole = 2
@@ -396,44 +425,27 @@ export class Game {
     this.loadedLevel = true;
   }
 
-  async advanceToNextLevel() {
-    this.loadedLevel = false;
-    this.currentLevel += 1;
-    let nextLevelFile = `./Maps/level${this.currentLevel}.txt`;
-
-    try {
-      const loadedData = await this.loadMapFromPath(nextLevelFile);
+  async loadLevel() {
+    // Load level from server instead of file
+    this.loadLevelFromServer().then(loadedData => {
+      this.loadedLevel = false;
       if (loadedData) {
-        this.resetGame();
-        this.updateMap(loadedData);
-        this.loadedLevel = true;
-      } else {
-        // No more levels available
-        console.log("No more levels available! Game completed.");
-        // Optionally, add a function here to handle game completion
-      }
-    } catch (error) {
-      console.error("Error loading the next level:", error);
-    }
-  }
+        if (loadedData.game_complete) {
+          console.log('Game completed! Final level:', loadedData.final_level);
+          // Handle game completions
+        } else {
+          this.resetGame();
 
-  async reloadCurrentLevel() {
-    this.loadedLevel = false;
-    let currentLevelFile = `./Maps/level${this.currentLevel}.txt`;
-    try {
-      const loadedData = await this.loadMapFromPath(currentLevelFile);
-      if (loadedData) {
-        const finishedResetting = await this.resetGame();
-        this.updateMap(loadedData);
-        if (finishedResetting) {
-          this.loadedLevel = true;
+          // Parse the map data and initialize game
+          const parsedData = this.parseMapData(loadedData.mapData);
+          this.updateMap(parsedData);
         }
-      } else {
-        console.error("Error reloading the current level.");
       }
-    } catch (error) {
-      console.error("Error reloading the current level:", error);
-    }
+      this.loadedLevel = true;
+    }).catch(error => {
+      console.error('Failed to load level from server:', error);
+      // Show error and return to main menu
+    });
   }
 
   async resetGame() {
@@ -467,11 +479,26 @@ export class Game {
       const fps = this.frameCount;
       this.frameCount = 0;
       this.totalElapsedTime = 0;
+      console.log(fps)
+    }
+  }
 
-      const fpsLabel = document.getElementById('fpsLabel');
-      if (fpsLabel) {
-        fpsLabel.innerText = `FPS: ${fps}`;
-      }
+  async sendGameEvent(id) {
+    const response = await fetch(`${API_BASE_URL}/game-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ run_id: this.run_id, tank_type: id })
+    });
+
+    const contentType = response.headers.get('content-type');
+
+    if (contentType && contentType.includes('application/json')) {
+      // Game complete case
+      return await response.json();
+    } else {
+      // Map data cases
+      const mapText = await response.text();
+      return { mapData: mapText };
     }
   }
 
@@ -481,14 +508,16 @@ export class Game {
     if (this.loadedLevel) {
       this.updateFPS();
 
-      // Level system
+      // Player death
       if (this.teamA.length == 0) {
-        this.reloadCurrentLevel();
+        this.loadLevel();
         return;
       }
 
+      // Advance to next level
       if (this.tanks.length === 1 && this.tanks[0] === this.player) {
-        this.advanceToNextLevel();
+        this.currentLevel += 1
+        this.loadLevel();
         return;
       }
 
@@ -526,7 +555,6 @@ export class Game {
             this.app.stage.addChild(firedBullets[i].body);
             this.allBullets.push(firedBullets[i])
           }
-
         }
       }
 
@@ -542,12 +570,14 @@ export class Game {
           for (let t = this.teamA.length - 1; t >= 0; t--) {
             if (this.teamA[t] == collided.tank) {
               this.teamA.splice(t, 1);
+              this.sendGameEvent(collided.tank.id);
             }
           }
 
           for (let t = this.teamB.length - 1; t >= 0; t--) {
             if (this.teamB[t] == collided.tank) {
               this.teamB.splice(t, 1);
+              this.sendGameEvent(collided.tank.id);
             }
           }
 

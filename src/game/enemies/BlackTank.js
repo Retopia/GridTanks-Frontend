@@ -5,6 +5,7 @@ export class BlackTank {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.body.tint = 0x000000;
+        this.id = 8;
 
         this.setPosition(x, y);
         this.setSize(width, height);

@@ -5,6 +5,7 @@ export class PinkTank {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.body.tint = 0xC35C70;
+        this.id = 7;
 
         this.setPosition(x, y);
         this.setSize(width, height);

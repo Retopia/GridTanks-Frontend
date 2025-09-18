@@ -1,13 +1,17 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Game } from './Game.js'; // Your existing Game class
 
 function GameScene() {
   const gameRef = useRef(null);
   const gameInstanceRef = useRef(null);
-  const hasInitialized = useRef(false); // Prevent double initialization
+  const hasInitialized = useRef(false);
+  const hasStartedGame = useRef(false);
+  const [runId, setRunId] = useState(null);
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
-    // Prevent double initialization in React StrictMode
+    // Prevent double initialization in StrictMode
     if (hasInitialized.current) {
       return;
     }
@@ -18,7 +22,6 @@ function GameScene() {
       // Wait a frame to ensure gameContainer exists
       await new Promise(resolve => requestAnimationFrame(resolve));
 
-      // Check if gameContainer exists
       const gameContainer = document.getElementById('gameContainer');
       if (!gameContainer) {
         console.error('gameContainer not found!');
@@ -32,13 +35,22 @@ function GameScene() {
       const gameInstance = new Game();
       gameInstanceRef.current = gameInstance;
 
-      // Call your existing setup method
-      try {
-        gameInstance.setup();
-        console.log('Game setup completed');
-      } catch (error) {
-        console.error('Game setup failed:', error);
+      // Start game and WAIT for it to complete before setup
+      if (!hasStartedGame.current) {
+        hasStartedGame.current = true;
+        try {
+          const response = await fetch(`${API_BASE_URL}/start-game`, { method: 'POST' });
+          const data = await response.json();
+          setRunId(data.run_id);
+          console.log(data.run_id)
+
+          gameInstance.setup(data.run_id);
+        } catch (error) {
+          console.error('Failed to start game:', error);
+        }
       }
+
+      console.log('Game setup completed');
 
       // Store reference for cleanup
       gameRef.current = gameInstance;
@@ -58,8 +70,9 @@ function GameScene() {
         gameRef.current = null;
       }
       hasInitialized.current = false;
+      hasStartedGame.current = false;
     };
-  }, []); // Empty dependency array
+  }, []);
 
   return (
     <div className="scene-basic">

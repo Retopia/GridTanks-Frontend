@@ -45,9 +45,9 @@ export class Cell {
     getColor() {
         switch (this.cellType) {
             case 'wall':
-                return 0x303030;
+                return 0x3d4852;
             case 'path':
-                return 0xFFFFFF;
+                return 0x1a2332;
             case 'player':
                 return 0x0000dd;
             case 'brown':

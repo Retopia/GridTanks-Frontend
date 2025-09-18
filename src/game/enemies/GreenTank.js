@@ -5,6 +5,7 @@ export class GreenTank {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.body.tint = 0x009530;
+        this.id = 6;
 
         this.setPosition(x, y);
         this.setSize(width, height);

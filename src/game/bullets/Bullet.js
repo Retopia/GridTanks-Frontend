@@ -13,7 +13,7 @@ export class Bullet {
 
         // Yellow bullet
         const bullet = new PIXI.Graphics();
-        bullet.beginFill(0xfabb55);
+        bullet.beginFill(0xff6b35);
         bullet.drawCircle(0, 0, this.bulletRadius);
         bullet.endFill();
         this.body.addChild(bullet);

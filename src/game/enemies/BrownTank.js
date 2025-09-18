@@ -5,6 +5,7 @@ export class BrownTank {
     constructor(x, y, width, height, speed) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.body.tint = 0xac6902;
+        this.id = 4;
 
         this.setPosition(x, y);
         this.setSize(width, height);

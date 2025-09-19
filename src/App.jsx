@@ -2,6 +2,7 @@ import { useState } from 'react';
 import './App.css'
 import GameScene from './game/GameScene';
 import ScoreSubmissionScene from './ScoreSubmissionScene';
+import LeaderboardScene from './LeaderboardScene';
 
 const GridTanks = () => {
     // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission'
@@ -105,42 +106,6 @@ const GridTanks = () => {
         </div>
     );
 
-    // Leaderboard Scene Component (placeholder)
-    const LeaderboardScene = () => (
-        <div className="scene-basic">
-            <div className="leaderboard-content">
-                <h2 className="scene-title">Leaderboard</h2>
-
-                <div className="leaderboard-table">
-                    <div className="leaderboard-header">
-                        <div>Username</div>
-                        <div>Stage Reached</div>
-                        <div>Time</div>
-                        <div>Date Submitted</div>
-                    </div>
-
-                    {/* Sample leaderboard entries */}
-                    {[
-                        { username: 'Retopia', stage: 10, time: '23m14s', date: '8/16/2025' },
-                        { username: 'TankMaster', stage: 8, time: '18m32s', date: '8/15/2025' },
-                        { username: 'BulletStorm', stage: 7, time: '15m47s', date: '8/14/2025' }
-                    ].map((entry, index) => (
-                        <div key={index} className="leaderboard-row">
-                            <div>{entry.username}</div>
-                            <div>{entry.stage}</div>
-                            <div>{entry.time}</div>
-                            <div>{entry.date}</div>
-                        </div>
-                    ))}
-                </div>
-
-                <button className="back-button" onClick={switchToMenu}>
-                    Back to Menu
-                </button>
-            </div>
-        </div>
-    );
-
     // Render current scene
     const renderCurrentScene = () => {
         switch (currentScene) {
@@ -151,7 +116,7 @@ const GridTanks = () => {
             case 'howto':
                 return <HowToPlayScene />;
             case 'leaderboard':
-                return <LeaderboardScene />;
+                return <LeaderboardScene switchToMenu={switchToMenu}/>;
             case 'scoreSubmission':
                 return <ScoreSubmissionScene
                     runId={runId}

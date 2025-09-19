@@ -283,40 +283,6 @@
   transform: translateY(-1px);
 }
 
-/* Leaderboard Styles */
-.leaderboard-content {
-  text-align: center;
-  max-width: 800px;
-  padding: 0 20px;
-}
-
-.leaderboard-table {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 30px;
-}
-
-.leaderboard-header {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 15px;
-  padding: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #FF6B35;
-  font-weight: 600;
-}
-
-.leaderboard-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 15px;
-  padding: 10px;
-  color: #a0aec0;
-}
-
 /* Game Scene */
 .game-container {
   width: 800px;
@@ -629,4 +595,245 @@
     color: #718096;
     text-align: right;
     margin-top: 4px;
+}
+
+/* Updated Leaderboard Styles for 5 columns */
+.leaderboard-content {
+  text-align: center;
+  max-width: 900px;
+  padding: 0 20px;
+}
+
+.leaderboard-table {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.leaderboard-header {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FF6B35;
+  font-weight: 600;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 1fr 1fr;
+  gap: 15px;
+  padding: 10px;
+  color: #a0aec0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+/* Skeleton pagination controls */
+.skeleton-pagination-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  cursor: default !important;
+  pointer-events: none;
+}
+
+.skeleton-pagination-btn:hover {
+  transform: none !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+.skeleton-btn-text {
+  width: 60px;
+  height: 14px;
+}
+
+.skeleton-page-info {
+  width: 50px;
+  height: 14px;
+}
+
+/* Skeleton loading styles */
+.skeleton-row {
+  animation: none;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-item {
+  height: 16px;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.1) 25%, 
+    rgba(255, 255, 255, 0.2) 50%, 
+    rgba(255, 255, 255, 0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+  margin: 0;
+}
+
+/* Different widths for different column types */
+.skeleton-rank {
+  width: 20px;
+}
+
+.skeleton-username {
+  width: 70%;
+}
+
+.skeleton-stage {
+  width: 40%;
+}
+
+.skeleton-time {
+  width: 60%;
+}
+
+.skeleton-date {
+  width: 75%;
+}
+
+@keyframes skeleton-loading {
+  0% { 
+    background-position: 200% 0; 
+  }
+  100% { 
+    background-position: -200% 0; 
+  }
+}
+
+/* Subtle pulse effect for skeleton rows */
+.skeleton-row {
+  opacity: 1;
+  animation: skeleton-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes skeleton-pulse {
+  0% { 
+    opacity: 1; 
+  }
+  100% { 
+    opacity: 0.7; 
+  }
+}
+
+/* New styles for loading, error, and pagination */
+.loading-state, .error-state, .no-data {
+  text-align: center;
+  padding: 2rem;
+  color: #a0aec0;
+}
+
+.retry-button {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #E74C3C;
+  color: #E74C3C;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.retry-button:hover {
+  background: rgba(231, 76, 60, 0.3);
+  transform: translateY(-1px);
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.pagination-button {
+  padding: 8px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.pagination-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #FF6B35, #ff8c42);
+  opacity: 0;
+  border-radius: 6px;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.pagination-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #FF6B35;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+}
+
+.pagination-button:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.pagination-button:disabled {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #718096;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.page-info {
+  font-weight: 600;
+  color: #FF6B35;
+  font-size: 14px;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .leaderboard-content {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+  
+  .leaderboard-header,
+  .leaderboard-row {
+    grid-template-columns: 40px 1fr 80px 80px 100px;
+    gap: 8px;
+    font-size: 12px;
+  }
+  
+  .leaderboard-table {
+    padding: 15px;
+  }
+  
+  .pagination-controls {
+    gap: 0.5rem;
+  }
+  
+  .pagination-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
 }

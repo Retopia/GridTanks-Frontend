@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import './App.css'
 import GameScene from './game/GameScene';
+import ScoreSubmissionScene from './ScoreSubmissionScene';
 
 const GridTanks = () => {
-    const [currentScene, setCurrentScene] = useState('menu'); // 'menu', 'game', 'howto', 'leaderboard'
+    // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission'
+    const [currentScene, setCurrentScene] = useState('menu');
+    const [runId, setRunId] = useState("")
 
     // Scene switching functions
     const switchToGame = () => {
@@ -24,6 +27,11 @@ const GridTanks = () => {
     const switchToMenu = () => {
         console.log('Returning to menu...');
         setCurrentScene('menu');
+    };
+
+    const switchToScoreSubmission = (runId) => {
+        setRunId(runId);
+        setCurrentScene('scoreSubmission');
     };
 
     // Main Menu Component
@@ -139,11 +147,17 @@ const GridTanks = () => {
             case 'menu':
                 return <MainMenu />;
             case 'game':
-                return <GameScene switchToMenu={switchToMenu}/>;
+                return <GameScene switchToMenu={switchToMenu} switchToScoreSubmission={switchToScoreSubmission} />;
             case 'howto':
                 return <HowToPlayScene />;
             case 'leaderboard':
                 return <LeaderboardScene />;
+            case 'scoreSubmission':
+                return <ScoreSubmissionScene
+                    runId={runId}
+                    switchToMenu={switchToMenu}
+                    switchToLeaderboard={switchToLeaderboard}
+                />;
             default:
                 return <MainMenu />;
         }

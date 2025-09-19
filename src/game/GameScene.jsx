@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Game } from './Game.js'; // Your existing Game class
 
-function GameScene({ switchToMenu }) {
+function GameScene({ switchToMenu, switchToScoreSubmission }) {
     const gameRef = useRef(null);
     const gameInstanceRef = useRef(null);
     const hasInitialized = useRef(false);
@@ -17,12 +17,8 @@ function GameScene({ switchToMenu }) {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
     const handleFinishRun = () => {
-        // Add your finish run logic here
         console.log('Finishing run...');
-    };
 
-    const handleBackToMenu = () => {
-        console.log('Going back to menu...');
         if (gameRef.current) {
             console.log('Cleaning up game...');
             try {
@@ -34,6 +30,24 @@ function GameScene({ switchToMenu }) {
         }
         hasInitialized.current = false;
         hasStartedGame.current = false;
+
+        switchToScoreSubmission(runId);
+    };
+    const handleBackToMenu = () => {
+        console.log('Going back to menu...');
+
+        if (gameRef.current) {
+            console.log('Cleaning up game...');
+            try {
+                gameRef.current.cleanup();
+            } catch (error) {
+                console.error('Cleanup error:', error);
+            }
+            gameRef.current = null;
+        }
+        hasInitialized.current = false;
+        hasStartedGame.current = false;
+
         switchToMenu();
     };
 

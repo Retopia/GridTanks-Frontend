@@ -8,15 +8,6 @@ import { BlackTank } from "./enemies/BlackTank.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const TANK_TYPES = {
-    3: "player",   // Player Tank - Speed: 2, Bullets: 5, Type: Normal
-    4: "brown",    // Brown Tank - Speed: 0, Bullets: 1, Type: Normal
-    5: "grey",     // Grey Tank - Speed: 1, Bullets: 1, Type: Normal
-    6: "green",    // Green Tank - Speed: 1, Bullets: 1, Type: Fire
-    7: "pink",     // Pink Tank - Speed: 2, Bullets: 5, Type: Normal
-    8: "black",    // Black Tank - Speed: 3, Bullets: 5, Type: Fire
-}
-
 export class Game {
     constructor() {
         this.app = new PIXI.Application({
@@ -25,7 +16,7 @@ export class Game {
             backgroundColor: 0x1a2332
         });
 
-        this.currentLevel = 0; // Add a property to track the current level
+        this.currentLevel = 1;
 
         this.physicalMap = []; // All the physical walls
         this.tanks = [];
@@ -39,11 +30,18 @@ export class Game {
         this.mouseX = 0;
         this.mouseY = 0;
         this.player = new Player(700, 100, 18, 18, 2, this.app);
+
         this.loadedLevel = false;
+        this.isLoadingLevel = false;
+        this.maxRetries = 3;
+        this.retryDelay = 2000;
+
         this.run_id = null;
 
         this.teamA = [];
         this.teamB = [];
+
+        this.totalEnemies = 0;
 
         this.isPlayerPlayable = true;
         this.playerSelectorValue = 'player';
@@ -52,6 +50,24 @@ export class Game {
         this.lastFrameTime = performance.now(); // Start with the current time
         this.frameCount = 0;
         this.totalElapsedTime = 0;
+
+        this.updateGameStats = null;
+        this.gameStartTime = null;
+    }
+
+    setGameStatsUpdater(updateFunction) {
+        this.updateGameStats = updateFunction;
+    }
+
+    updateUI() {
+        if (this.updateGameStats) {
+            this.updateGameStats({
+                currentLevel: this.currentLevel,
+                timer: this.formatTime(this.getGameTime()),
+                enemiesLeft: this.teamB.length,
+                totalEnemies: this.totalEnemies
+            });
+        }
     }
 
     setup(run_id) {
@@ -74,13 +90,16 @@ export class Game {
             console.error('Failed to load level from server:', error);
             // Show error and return to main menu
         });
+
+        this.gameStartTime = Date.now();
+        this.updateUI();
     }
 
     initGame(loadedData) {
         this.updateMap(loadedData);
 
         this.app.ticker.speed = 1.0;
-        this.app.ticker.maxFPS = 60;
+        this.app.ticker.maxFPS = 0;
         this.app.ticker.add((delta) => this.gameLoop(delta));
 
         this.app.renderer.plugins.interaction.on('pointermove', (e) => {
@@ -105,21 +124,34 @@ export class Game {
     }
 
     async loadLevelFromServer() {
-        const response = await fetch(`${API_BASE_URL}/level`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ run_id: this.run_id })
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-        const contentType = response.headers.get('content-type');
+        try {
+            const response = await fetch(`${API_BASE_URL}/level`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ run_id: this.run_id }),
+                signal: controller.signal
+            });
 
-        if (contentType && contentType.includes('application/json')) {
-            // Game complete case
-            return await response.json();
-        } else {
-            // Map data cases
-            const mapText = await response.text();
-            return { mapData: mapText };
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+
+            if (contentType && contentType.includes('application/json')) {
+                return await response.json();
+            } else {
+                const mapText = await response.text();
+                return { mapData: mapText };
+            }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            throw error;
         }
     }
 
@@ -424,29 +456,53 @@ export class Game {
         });
 
         this.loadedLevel = true;
+        this.totalEnemies = this.teamB.length
     }
 
-    async loadLevel() {
-        // Load level from server instead of file
-        this.loadLevelFromServer().then(loadedData => {
-            this.loadedLevel = false;
+    async loadLevel(retryCount = 0) {
+        // Prevent multiple simultaneous requests
+        if (this.isLoadingLevel) {
+            console.log('Level load already in progress, skipping...');
+            return;
+        }
+
+        this.isLoadingLevel = true;
+        this.loadedLevel = false;
+
+        try {
+            const loadedData = await this.loadLevelFromServer();
+
             if (loadedData) {
                 if (loadedData.game_complete) {
                     console.log('Game completed! Final level:', loadedData.final_level);
-                    // Handle game completions
+                    // Handle game completion
                 } else {
-                    this.resetGame();
-
-                    // Parse the map data and initialize game
+                    await this.resetGame();
                     const parsedData = this.parseMapData(loadedData.mapData);
                     this.updateMap(parsedData);
                 }
             }
+
             this.loadedLevel = true;
-        }).catch(error => {
-            console.error('Failed to load level from server:', error);
-            // Show error and return to main menu
-        });
+
+        } catch (error) {
+            console.error(`Failed to load level (attempt ${retryCount + 1}):`, error);
+
+            // Retry logic
+            if (retryCount < this.maxRetries) {
+                console.log(`Retrying in ${this.retryDelay}ms...`);
+                setTimeout(() => {
+                    this.loadLevel(retryCount + 1);
+                }, this.retryDelay);
+                return; // Don't reset the loading flag yet
+            } else {
+                console.error('Max retries reached. Returning to menu.');
+                // Handle failure - maybe show error message and return to menu
+                this.handleLoadFailure();
+            }
+        } finally {
+            this.isLoadingLevel = false;
+        }
     }
 
     async resetGame() {
@@ -455,6 +511,11 @@ export class Game {
         this.teamA = [];
         this.teamB = [];
         this.app.stage.removeChildren();
+    }
+
+    // Display an error message or something
+    handleLoadFailure() {
+
     }
 
     isTeamADead() {
@@ -503,11 +564,30 @@ export class Game {
         }
     }
 
+    getGameTime() {
+        if (!this.gameStartTime) return 0;
+        return Date.now() - this.gameStartTime;
+    }
+
+    formatTime(milliseconds) {
+        const seconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
     gameLoop(delta) {
         this.stepCount += 1;
 
+        const cappedDelta = Math.min(delta, 2.0);
+
         if (this.loadedLevel) {
             this.updateFPS();
+
+            // Update UI every 30 frames so its cheaper
+            if (this.frameCount % 30 === 0) {
+                this.updateUI();
+            }
 
             // Player death
             if (this.teamA.length == 0) {
@@ -532,9 +612,9 @@ export class Game {
                 let firedBullets = null;
                 if (tank instanceof Player) {
                     // Shooting for players is handled separately
-                    this.player.update(delta, this.collisionLines, this.mouseX, this.mouseY, this.physicalMap);
+                    this.player.update(cappedDelta, this.collisionLines, this.mouseX, this.mouseY, this.physicalMap);
                 } else {
-                    firedBullets = tank.update(delta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamA, this.teamB);
+                    firedBullets = tank.update(cappedDelta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamA, this.teamB);
                 }
 
                 if (firedBullets && firedBullets.length > 0) {
@@ -549,7 +629,7 @@ export class Game {
             // Loop through Team B tanks
             for (let t = 0; t < this.teamB.length; t++) {
                 let tank = this.teamB[t];
-                let firedBullets = tank.update(delta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamB, this.teamA, this.app)
+                let firedBullets = tank.update(cappedDelta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamB, this.teamA, this.app)
 
                 if (firedBullets && firedBullets.length > 0) {
                     for (let i = 0; i < firedBullets.length; i++) {
@@ -586,7 +666,7 @@ export class Game {
                     bullet.owner.firedBullets -= 1
                     this.allBullets.splice(i, 1)
                 } else {
-                    bullet.update(delta, this.collisionLines, this.allBullets);
+                    bullet.update(cappedDelta, this.collisionLines, this.allBullets);
 
                     if (bullet.toDestroy) {
                         this.app.stage.removeChild(bullet.body);

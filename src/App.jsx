@@ -139,7 +139,7 @@ const GridTanks = () => {
             case 'menu':
                 return <MainMenu />;
             case 'game':
-                return <GameScene />;
+                return <GameScene switchToMenu={switchToMenu}/>;
             case 'howto':
                 return <HowToPlayScene />;
             case 'leaderboard':

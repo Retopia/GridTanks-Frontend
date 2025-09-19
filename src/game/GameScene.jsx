@@ -1,14 +1,41 @@
 import { useState, useEffect, useRef } from 'react';
 import { Game } from './Game.js'; // Your existing Game class
 
-function GameScene() {
+function GameScene({ switchToMenu }) {
     const gameRef = useRef(null);
     const gameInstanceRef = useRef(null);
     const hasInitialized = useRef(false);
     const hasStartedGame = useRef(false);
     const [runId, setRunId] = useState(null);
+    const [gameStats, setGameStats] = useState({
+        currentLevel: 1,
+        timer: '0:00',
+        enemiesLeft: 0,
+        totalEnemies: 0
+    });
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+    const handleFinishRun = () => {
+        // Add your finish run logic here
+        console.log('Finishing run...');
+    };
+
+    const handleBackToMenu = () => {
+        console.log('Going back to menu...');
+        if (gameRef.current) {
+            console.log('Cleaning up game...');
+            try {
+                gameRef.current.cleanup();
+            } catch (error) {
+                console.error('Cleanup error:', error);
+            }
+            gameRef.current = null;
+        }
+        hasInitialized.current = false;
+        hasStartedGame.current = false;
+        switchToMenu();
+    };
 
     useEffect(() => {
         // Prevent double initialization in StrictMode
@@ -44,6 +71,7 @@ function GameScene() {
                     setRunId(data.run_id);
                     console.log(data.run_id)
 
+                    gameInstance.setGameStatsUpdater(setGameStats);
                     gameInstance.setup(data.run_id);
                 } catch (error) {
                     console.error('Failed to start game:', error);
@@ -76,8 +104,42 @@ function GameScene() {
 
     return (
         <div className="scene-basic">
-            <div className="game-container">
-                <div id="gameContainer" style={{ position: 'relative' }} />
+            <div className="game-wrapper-sidebar">
+                {/* Sidebar */}
+                <div className="game-sidebar">
+                    <div className="sidebar-section">
+                        <div className="sidebar-title">Timer</div>
+                        <div className="sidebar-value">{gameStats.timer}</div>
+                    </div>
+
+                    <div className="sidebar-section">
+                        <div className="sidebar-title">Level</div>
+                        <div className="sidebar-value">{gameStats.currentLevel}</div>
+                        <div className="sidebar-label">Current Stage</div>
+                    </div>
+
+                    <div className="sidebar-section">
+                        <div className="sidebar-title">Enemies</div>
+                        <div className="sidebar-value">{gameStats.enemiesLeft}/{gameStats.totalEnemies}</div>
+                        <div className="sidebar-label">Remaining</div>
+                    </div>
+
+                    <div className="sidebar-section">
+                        <div className="sidebar-buttons">
+                            <button className="sidebar-button danger" onClick={handleFinishRun}>
+                                Finish Run
+                            </button>
+                            <button className="sidebar-button" onClick={handleBackToMenu}>
+                                Back to Menu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Game Canvas */}
+                <div className="game-container">
+                    <div id="gameContainer" style={{ position: 'relative' }} />
+                </div>
             </div>
         </div>
     );

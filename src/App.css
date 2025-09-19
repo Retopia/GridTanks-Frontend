@@ -323,11 +323,116 @@
   height: 600px;
   background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
   position: relative;
-  border-radius: 8px; /* Optional: rounded corners */
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); /* Optional: shadow */
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 /* Make the PIXI canvas transparent so the gradient shows through */
 #gameContainer canvas {
   background: transparent !important;
+}
+
+/* Sidebar Game Layout */
+.game-wrapper-sidebar {
+  display: flex;
+  gap: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  backdrop-filter: blur(20px);
+}
+
+.game-sidebar {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.sidebar-section {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  color: #ffffff;
+}
+
+.sidebar-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #FF6B35;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-value {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.sidebar-label {
+  font-size: 12px;
+  color: #a0aec0;
+}
+
+.sidebar-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-button {
+  padding: 10px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+}
+
+.sidebar-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #FF6B35, #ff8c42);
+  opacity: 0;
+  border-radius: 6px;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.sidebar-button:hover {
+  transform: translateY(-1px);
+  border-color: #FF6B35;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+}
+
+.sidebar-button:hover::before {
+  opacity: 1;
+}
+
+.sidebar-button.danger {
+  border-color: rgba(231, 76, 60, 0.3);
+}
+
+.sidebar-button.danger:hover {
+  border-color: #E74C3C;
+  box-shadow: 0 4px 20px rgba(231, 76, 60, 0.3);
+}
+
+.sidebar-button.danger::before {
+  background: linear-gradient(135deg, #E74C3C, #C0392B);
 }

@@ -122,7 +122,7 @@ const LeaderboardScene = ({ switchToMenu }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>Stage Reached</div>
+                                <div>Stages Completed</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>
@@ -132,7 +132,7 @@ const LeaderboardScene = ({ switchToMenu }) => {
                                     <div key={`${entry.username}-${index}`} className="leaderboard-row">
                                         <div>{((currentPage - 1) * limit) + index + 1}</div>
                                         <div>{entry.username}</div>
-                                        <div>{entry.stage_reached}</div>
+                                        <div>{entry.completed_levels}</div>
                                         <div>{entry.time}</div>
                                         <div>{entry.date_submitted}</div>
                                     </div>

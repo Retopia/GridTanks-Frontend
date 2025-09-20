@@ -91,8 +91,8 @@ function ScoreSubmissionScene({ runId, switchToMenu, switchToLeaderboard }) {
                     <div className="score-title">Your Final Score</div>
                     <div className="score-stats">
                         <div className="stat">
-                            <div className="stat-value">Level {serverStats.final_level}</div>
-                            <div className="stat-label">Stage Reached</div>
+                            <div className="stat-value">Level {serverStats.stages_completed}</div>
+                            <div className="stat-label">Stages Completed</div>
                         </div>
                         <div className="stat">
                             <div className="stat-value">{serverStats.time}</div>

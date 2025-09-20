@@ -52,11 +52,16 @@ export class Game {
         this.totalElapsedTime = 0;
 
         this.updateGameStats = null;
+        this.switchToScoreSubmission = null;
         this.gameStartTime = null;
     }
 
     setGameStatsUpdater(updateFunction) {
         this.updateGameStats = updateFunction;
+    }
+
+    setScoreSubmissionSwitcher(switcherFunction) {
+        this.switchToScoreSubmission = switcherFunction
     }
 
     updateUI() {
@@ -79,7 +84,9 @@ export class Game {
             if (loadedData) {
                 if (loadedData.game_complete) {
                     console.log('Game completed! Final level:', loadedData.final_level);
-                    // Handle game completions
+
+                    this.cleanup();
+                    this.switchToScoreSubmission(this.run_id);
                 } else {
                     // Parse the map data and initialize game
                     const parsedData = this.parseMapData(loadedData.mapData);
@@ -475,7 +482,7 @@ export class Game {
             if (loadedData) {
                 if (loadedData.game_complete) {
                     console.log('Game completed! Final level:', loadedData.final_level);
-                    // Handle game completion
+                    this.switchToScoreSubmission(this.run_id)
                 } else {
                     await this.resetGame();
                     const parsedData = this.parseMapData(loadedData.mapData);
@@ -552,16 +559,16 @@ export class Game {
             body: JSON.stringify({ run_id: this.run_id, tank_type: id })
         });
 
-        const contentType = response.headers.get('content-type');
+        const data = await response.json();
 
-        if (contentType && contentType.includes('application/json')) {
-            // Game complete case
-            return await response.json();
-        } else {
-            // Map data cases
-            const mapText = await response.text();
-            return { mapData: mapText };
+        if (data.game_complete) {
+            console.log('Game completed!');
+            this.cleanup();
+            this.switchToScoreSubmission(this.run_id);
+            return;
         }
+
+        return data;
     }
 
     getGameTime() {
@@ -597,8 +604,8 @@ export class Game {
 
             // Advance to next level
             if (this.tanks.length === 1 && this.tanks[0] === this.player) {
-                this.currentLevel += 1
                 this.loadLevel();
+                this.currentLevel += 1
                 return;
             }
 

@@ -33,6 +33,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission }) {
 
         switchToScoreSubmission(runId);
     };
+
     const handleBackToMenu = () => {
         console.log('Going back to menu...');
 
@@ -86,6 +87,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission }) {
                     console.log(data.run_id)
 
                     gameInstance.setGameStatsUpdater(setGameStats);
+                    gameInstance.setScoreSubmissionSwitcher(switchToScoreSubmission)
                     gameInstance.setup(data.run_id);
                 } catch (error) {
                     console.error('Failed to start game:', error);

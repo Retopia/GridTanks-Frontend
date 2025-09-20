@@ -12,7 +12,8 @@ export class Player {
         this.setSize(width, height);
 
         this.shootingCooldown = 0;
-        // This is based on delta... im not sure what unit this is in ngl but it feels right so
+
+        // Short pause for tank movement after shooting
         this.cooldownPeriod = 5;
 
         this.speed = speed;
@@ -21,12 +22,13 @@ export class Player {
         this.firedBullets = 0;
         this.maxBullets = 5;
 
-        this.turret = new PIXI.Graphics();
-        this.turret.beginFill(0x007ACC);
-        this.turret.drawRect(0, -2, 20, 4);
-        this.turret.endFill();
-        this.turret.x = this.body.width / 2 - this.turret.height / 2; // Center of the tank's width
-        this.turret.y = this.body.height / 2 - this.turret.height / 2; // Center of the tank's height
+        this.turret = PIXI.Sprite.from(PIXI.Texture.WHITE);
+        this.turret.tint = 0x007ACC;
+        this.turret.width = 20;
+        this.turret.height = 4;
+        this.turret.anchor.set(0, 0.5);
+        this.turret.x = this.body.width / 2;
+        this.turret.y = this.body.height / 2;
 
         this.body.addChild(this.turret);
 

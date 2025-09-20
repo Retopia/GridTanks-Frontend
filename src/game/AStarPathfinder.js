@@ -6,6 +6,16 @@ export class AStarPathfinder {
     }
 
     findPath(startPos, endPos) {
+        // Reset nodes
+        for (let row of this.grid) {
+            for (let node of row) {
+                node.gCost = Infinity;
+                node.hCost = 0;
+                node.fCost = Infinity;
+                node.parent = null;
+            }
+        }
+
         const startNode = this.grid[startPos.y][startPos.x];
         const endNode = this.grid[endPos.y][endPos.x];
 
@@ -19,7 +29,6 @@ export class AStarPathfinder {
         openSet.push(startNode);
 
         while (openSet.length > 0) {
-            // console.log(openSet, closedSet)
             let currentNode = openSet.reduce((a, b) => a.fCost < b.fCost ? a : b);
 
             if (currentNode === endNode) {

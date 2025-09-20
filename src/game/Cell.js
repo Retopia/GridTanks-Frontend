@@ -12,26 +12,23 @@ export class Cell {
     }
 
     createBody() {
-        if (this.cellType === 'wall' || this.cellType === 'path' || this.cellType === 'player' || this.cellType === 'brown' || this.cellType === 'grey' || this.cellType === 'green' || this.cellType === 'pink') {
-            let cell = new PIXI.Graphics();
-            cell.beginFill(this.getColor());
-            cell.drawRect(0, 0, this.width, this.height);
-            cell.endFill();
-            this.body = cell;
-        } else if (this.cellType === 'hole') {
+        if (this.cellType === 'hole') {
+            // Holes are a bit more complex (rings), so maybe keep Graphics here
             let hole = new PIXI.Graphics();
-
-            // Outer ring (slightly lighter)
             hole.beginFill(0x1a1a1a);
             hole.drawCircle(this.width / 2, this.height / 2, Math.min(this.width, this.height) / 2 * 0.85);
             hole.endFill();
-
-            // Inner hole (darker)
             hole.beginFill(0x050505);
             hole.drawCircle(this.width / 2, this.height / 2, Math.min(this.width, this.height) / 2 * 0.7);
             hole.endFill();
-
             this.body = hole;
+        } else {
+            // Everything else can be a Sprite
+            let sprite = PIXI.Sprite.from(PIXI.Texture.WHITE);
+            sprite.tint = this.getColor();
+            sprite.width = this.width;
+            sprite.height = this.height;
+            this.body = sprite;
         }
     }
 

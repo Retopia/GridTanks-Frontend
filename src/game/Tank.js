@@ -1,12 +1,13 @@
 import * as PIXI from 'pixi.js-legacy';
-import { Bullet } from "../bullets/Bullet.js";
-import { AStarPathfinder } from "../AStarPathfinder.js";
-export class GreyTank {
+import { Bullet } from './bullets/Bullet.js';
+import { FireBullet } from './bullets/FireBullet.js';
+import { AStarPathfinder } from './AStarPathfinder.js';
+export class Tank {
 
-    constructor(x, y, width, height, speed) {
+    constructor(x, y, color, id, width, height, speed, bulletType, maxBullets, shotDelayFunction, reflectedShotThreshold, predictiveDodgeDistanceThreshold) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
-        this.body.tint = 0xa8a8a8;
-        this.id = 5;
+        this.body.tint = color;
+        this.id = id;
 
         this.setPosition(x, y);
         this.setSize(width, height);
@@ -20,21 +21,24 @@ export class GreyTank {
         this.wallPathChangeTime = 120;
         this.wallPathChangeTimeAccumulator = 0;
 
-        this.maxBullets = 3;
+        this.maxBullets = maxBullets;
 
         this.shotDelayAccumulator = 0;
-        this.shotDelay = Math.random() * (100 - 10) + 10;
+        this.shotDelayFunction = shotDelayFunction;
+        this.shotDelay = Math.random() * (50 - 20) + 20; // All tanks shoot the first bullet fast
 
         this.targetDestination = null;
 
-        this.turret = new PIXI.Graphics();
-        this.turret.beginFill(0x965d00);
-        this.turret.drawRect(0, -2, 20, 4);
-        this.turret.endFill();
-        this.turret.x = this.body.width / 2 - this.turret.height / 2; // Center of the tank's width
-        this.turret.y = this.body.height / 2 - this.turret.height / 2; // Center of the tank's height
+        this.turret = PIXI.Sprite.from(PIXI.Texture.WHITE);
+        this.turret.tint = 0x965d00;
+        this.turret.width = 20;
+        this.turret.height = 4;
 
+        this.turret.x = this.body.width / 2;
+        this.turret.y = this.body.height / 2;
+        this.turret.anchor.set(0, 0.5);
         this.body.addChild(this.turret);
+
         this.prevLine = null;
 
         this.alive = true;
@@ -42,10 +46,13 @@ export class GreyTank {
         this.velocityX = 0;
         this.velocityY = 0;
         this.movementAngle = 0;
+        this.reflectedShotThreshold = reflectedShotThreshold;
+        this.predictiveDodgeDistanceThreshold = predictiveDodgeDistanceThreshold;
+        this.bulletType = bulletType;
     }
 
     isAlive() {
-        return this.isAlive
+        return this.isAlive;
     }
 
     setAlive(alive) {
@@ -53,8 +60,11 @@ export class GreyTank {
     }
 
     setPathfinder(physicalMap) {
-        this.physicalMap = physicalMap;
-        this.pathfinder = new AStarPathfinder(physicalMap);
+        // Stationary tanks don't need a pathfinder
+        if (this.speed > 0) {
+            this.physicalMap = physicalMap;
+            this.pathfinder = new AStarPathfinder(physicalMap);
+        }
     }
 
     setPosition(x, y) {
@@ -97,7 +107,7 @@ export class GreyTank {
         return t >= 0 && t <= 1 && u >= 0 && u <= 1;
     }
 
-    fireBullet() {
+    fireBullet(bulletType) {
         // Limit the amount of bullets that tanks can fire
         if (this.firedBullets < this.maxBullets) {
             const angle = this.turret.rotation;
@@ -106,7 +116,14 @@ export class GreyTank {
             const startX = this.body.x + this.turret.x + Math.cos(angle) * 25;
             const startY = this.body.y + this.turret.y + Math.sin(angle) * 25;
 
-            const bullet = new Bullet(this, startX, startY);
+            let bullet = null;
+
+            if (bulletType == "normal") {
+                bullet = new Bullet(this, startX, startY);
+            } else if (bulletType == "fire") {
+                bullet = new FireBullet(this, startX, startY);
+            }
+
             bullet.fire(angle)
 
             this.firedBullets += 1;
@@ -415,47 +432,58 @@ export class GreyTank {
     predictiveDodge(allBullets, delta) {
         let dodgeDirection = { x: 0, y: 0 };
 
+        const tankPos = {
+            x: this.body.x + this.body.width / 2,
+            y: this.body.y + this.body.height / 2
+        };
+
+        // How far ahead to predict bullets (in frames scaled by delta)
+        const lookahead = 30; // e.g. ~10 frames ahead at 60fps
+        const lookaheadFactor = delta * lookahead;
+
         for (let bullet of allBullets) {
-            let bulletDirection = {
-                x: bullet.velocityX,
-                y: bullet.velocityY
+            const bulletPos = { x: bullet.body.x, y: bullet.body.y };
+            const bulletVel = { x: bullet.velocityX, y: bullet.velocityY };
+
+            // Vector from bullet → tank
+            const bulletToTank = {
+                x: tankPos.x - bulletPos.x,
+                y: tankPos.y - bulletPos.y
             };
 
-            let bulletToTank = {
-                x: this.body.x - bullet.body.x,
-                y: this.body.y - bullet.body.y
+            // Dot product > 0 → bullet is heading toward tank
+            const dotProduct = bulletVel.x * bulletToTank.x + bulletVel.y * bulletToTank.y;
+            if (dotProduct <= 0) continue;
+
+            // Predict bullet's future position with lookahead
+            const bulletFuturePos = {
+                x: bulletPos.x + bulletVel.x * lookaheadFactor,
+                y: bulletPos.y + bulletVel.y * lookaheadFactor
             };
 
-            let dotProduct = bulletDirection.x * bulletToTank.x + bulletDirection.y * bulletToTank.y;
+            // Check if future bullet position is close to the tank
+            const distanceThreshold = this.predictiveDodgeDistanceThreshold;
+            if (this.distance(tankPos, bulletFuturePos) < distanceThreshold) {
+                // Dodge directly away from predicted bullet position
+                let dodgeX = tankPos.x - bulletFuturePos.x;
+                let dodgeY = tankPos.y - bulletFuturePos.y;
 
-            if (dotProduct > 0) {
-                let bulletFuturePosition = {
-                    x: bullet.body.x + bullet.velocityX * delta,
-                    y: bullet.body.y + bullet.velocityY * delta
-                };
-
-                let distanceThreshold = 120; // Adjust this value based on your game's scale
-
-                if (this.distance(this.body, bulletFuturePosition) < distanceThreshold) {
-                    let dodgeX = this.body.x - bulletFuturePosition.x;
-                    let dodgeY = this.body.y - bulletFuturePosition.y;
-
-                    let magnitude = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
-                    if (magnitude > 0) {
-                        dodgeX /= magnitude;
-                        dodgeY /= magnitude;
-                    }
-
-                    dodgeDirection.x += dodgeX;
-                    dodgeDirection.y += dodgeY;
+                let mag = Math.sqrt(dodgeX * dodgeX + dodgeY * dodgeY);
+                if (mag > 0) {
+                    dodgeX /= mag;
+                    dodgeY /= mag;
                 }
+
+                dodgeDirection.x += dodgeX;
+                dodgeDirection.y += dodgeY;
             }
         }
 
-        let magnitude = Math.sqrt(dodgeDirection.x * dodgeDirection.x + dodgeDirection.y * dodgeDirection.y);
-        if (magnitude > 0) {
-            dodgeDirection.x /= magnitude;
-            dodgeDirection.y /= magnitude;
+        // Normalize combined dodge direction
+        let mag = Math.sqrt(dodgeDirection.x * dodgeDirection.x + dodgeDirection.y * dodgeDirection.y);
+        if (mag > 0) {
+            dodgeDirection.x /= mag;
+            dodgeDirection.y /= mag;
         }
 
         return dodgeDirection;
@@ -480,6 +508,23 @@ export class GreyTank {
         return res;
     }
 
+    collidesWithWalls(mapWalls) {
+        for (let i = 0; i < mapWalls.length; i++) {
+            for (let j = 0; j < mapWalls[i].length; j++) {
+                if (this.isWallOrHole(mapWalls[i][j])) {
+                    let wall = mapWalls[i][j].body;
+                    if (this.body.x < wall.x + wall.width &&
+                        this.body.x + this.body.width > wall.x &&
+                        this.body.y < wall.y + wall.height &&
+                        this.body.y + this.body.height > wall.y) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     update(delta, mapWalls, player, collisionLines, allBullets, myTeam, enemyTeam) {
         let res = [];
         let cellHeight = 20;
@@ -487,58 +532,50 @@ export class GreyTank {
         let canShoot = false;
         player = this.getClosestTarget(enemyTeam);
 
-        // if (this.targetDestination) {
-        //     mapWalls[this.targetDestination.row][this.targetDestination.col].body.tint = 0x0000FF;
-        // }
-
-        // if (this.path) {
-        //     for (let i = 0; i < this.path.length; i++) {
-        //         this.path[i].body.tint = 0xFF00FF;
-        //     }
-        // }
-
         if (this.recoilAnimationTime > 0) {
             this.recoilAnimationTime -= delta;
         }
 
         this.wallPathChangeTimeAccumulator += delta;
         this.shotDelayAccumulator += delta;
-        if (this.shotDelayAccumulator > this.shotDelay) {
+        if (this.shotDelayAccumulator >= this.shotDelay) {
+            this.shotDelayAccumulator -= this.shotDelay;
+            this.shotDelay = this.shotDelayFunction();
             canShoot = true;
-            this.shotDelayAccumulator = 0;
-            this.shotDelay = Math.random() * (300 - 80) + 80;
         }
 
         // This section is on shooting  
         const attackingBullet = this.canShootAtAttackingBullet(allBullets, 50);
-        // Defensive maneuver
-        if (canShoot && attackingBullet) {
-            this.rotateTurret(attackingBullet.x, attackingBullet.y);
-            let returnedBullet = this.fireBullet();
-            if (returnedBullet) {
-                res.push(returnedBullet);
-            }
-        } else if (canShoot) {
-            const seed = Math.random();
-            // Randomize between shooting reflected and direct shot
-            if (seed >= 0.6) {
-                // Direct shot
-                if (this.canShootDirectlyAtPlayer(player, collisionLines, myTeam, enemyTeam)) {
-                    // Rotate the turret towards the player
-                    this.rotateTurret(player.body.x + player.body.width / 2, player.body.y + player.body.height / 2);
-                    let returnedBullet = this.fireBullet();
-                    if (returnedBullet) {
-                        res.push(returnedBullet);
-                    }
+        if (canShoot && this.firedBullets < this.maxBullets) {
+            // Defensive maneuver
+            if (attackingBullet) {
+                this.rotateTurret(attackingBullet.x, attackingBullet.y);
+                let returnedBullet = this.fireBullet(this.bulletType === "both" ? "fire" : this.bulletType);
+                if (returnedBullet) {
+                    res.push(returnedBullet);
                 }
             } else {
-                // Reflected shot
-                let shootingPoint = this.canShootReflectedAtPlayer(player, collisionLines, myTeam, enemyTeam);
-                if (shootingPoint) {
-                    this.rotateTurret(shootingPoint.x, shootingPoint.y);
-                    let returnedBullet = this.fireBullet();
-                    if (returnedBullet) {
-                        res.push(returnedBullet);
+                const seed = Math.random();
+                // Randomize between shooting reflected and direct shot
+                if (seed >= this.reflectedShotThreshold) {
+                    // Direct shot
+                    if (this.canShootDirectlyAtPlayer(player, collisionLines, myTeam, enemyTeam)) {
+                        // Rotate the turret towards the player
+                        this.rotateTurret(player.body.x + player.body.width / 2, player.body.y + player.body.height / 2);
+                        let returnedBullet = this.fireBullet(this.bulletType === "both" ? "fire" : this.bulletType);
+                        if (returnedBullet) {
+                            res.push(returnedBullet);
+                        }
+                    }
+                } else {
+                    // Reflected shot
+                    let shootingPoint = this.canShootReflectedAtPlayer(player, collisionLines, myTeam, enemyTeam);
+                    if (shootingPoint) {
+                        this.rotateTurret(shootingPoint.x, shootingPoint.y);
+                        let returnedBullet = this.fireBullet(this.bulletType === "both" ? "normal" : this.bulletType);
+                        if (returnedBullet) {
+                            res.push(returnedBullet);
+                        }
                     }
                 }
             }
@@ -550,94 +587,88 @@ export class GreyTank {
                 col: Math.floor(this.body.x / cellWidth)
             };
 
-            // Determine if a new target destination is needed
-            if (!this.targetDestination ||
-                (this.targetDestination.row === currentCell.row && this.targetDestination.col === currentCell.col)) {
-                this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
-                this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
-                    { x: this.targetDestination.col, y: this.targetDestination.row });
-            }
+            if (this.speed > 0) {
+                // Determine if a new target destination is needed
+                if (!this.targetDestination ||
+                    (this.targetDestination.row === currentCell.row && this.targetDestination.col === currentCell.col)) {
+                    this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
+                    this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
+                        { x: this.targetDestination.col, y: this.targetDestination.row });
+                }
 
-            // Store the previous position before movement
-            let prevX = this.body.x;
-            let prevY = this.body.y;
+                let changePath = false;
 
-            // Predictive Dodging
-            let bulletDodgeDirection = this.predictiveDodge(allBullets, delta);
+                // Store the previous position
+                let prevX = this.body.x;
+                let prevY = this.body.y;
 
-            if (bulletDodgeDirection.x !== 0 || bulletDodgeDirection.y !== 0) {
-                // Move the tank based on the dodge direction
-                this.body.x += bulletDodgeDirection.x * this.speed * delta;
-                this.body.y += bulletDodgeDirection.y * this.speed * delta;
-            } else {
-                // Move towards the next waypoint in the path
-                if (this.path && this.path.length > 0) {
+                // Predictive Dodging
+                let bulletDodgeDirection = this.predictiveDodge(allBullets, delta);
+
+                if (bulletDodgeDirection.x !== 0 || bulletDodgeDirection.y !== 0) {
+                    // --- Dodge movement ---
+                    let step = this.speed * delta;
+                    let dirX = bulletDodgeDirection.x;
+                    let dirY = bulletDodgeDirection.y;
+
+                    // Move X
+                    this.body.x = prevX + dirX * step;
+                    this.body.y = prevY;
+                    if (this.collidesWithWalls(mapWalls)) this.body.x = prevX;
+
+                    // Move Y
+                    this.body.y = prevY + dirY * step;
+                    if (this.collidesWithWalls(mapWalls)) this.body.y = prevY;
+
+                } else if (this.path && this.path.length > 0) {
+                    // --- Path movement ---
                     let nextWaypoint = this.path[0];
                     let waypointX = nextWaypoint.body.x + cellWidth / 2;
                     let waypointY = nextWaypoint.body.y + cellHeight / 2;
 
-                    let directionX = waypointX - this.body.x;
-                    let directionY = waypointY - this.body.y;
+                    let dirX = waypointX - this.body.x;
+                    let dirY = waypointY - this.body.y;
+                    let magnitude = Math.sqrt(dirX * dirX + dirY * dirY);
 
-                    let magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
-                    if (magnitude < 1) {
+                    if (magnitude < this.speed * delta) {
+                        // Reached waypoint
                         this.path.shift();
                     } else {
-                        directionX /= magnitude;
-                        directionY /= magnitude;
+                        dirX /= magnitude;
+                        dirY /= magnitude;
+                        let step = this.speed * delta;
 
-                        this.body.x += directionX * this.speed * delta;
-                        this.body.y += directionY * this.speed * delta;
+                        // Move X
+                        this.body.x = prevX + dirX * step;
+                        this.body.y = prevY;
+                        if (this.collidesWithWalls(mapWalls)) this.body.x = prevX;
+
+                        // Move Y
+                        this.body.y = prevY + dirY * step;
+                        if (this.collidesWithWalls(mapWalls)) this.body.y = prevY;
                     }
                 }
-            }
 
-            let changePath = false;
+                if (changePath && (this.wallPathChangeTimeAccumulator > this.wallPathChangeTime)) {
+                    this.wallPathChangeTimeAccumulator = 0;
+                    let currentCell = {
+                        row: Math.floor(this.body.y / cellHeight),
+                        col: Math.floor(this.body.x / cellWidth)
+                    };
 
-            // Check for collision with walls
-            for (let i = 0; i < mapWalls.length; i++) {
-                for (let j = 0; j < mapWalls[i].length; j++) {
-                    if (this.isWallOrHole(mapWalls[i][j])) {
-                        let wallX = mapWalls[i][j].body.x;
-                        let wallY = mapWalls[i][j].body.y;
-                        let wallWidth = mapWalls[i][j].body.width;
-                        let wallHeight = mapWalls[i][j].body.height;
+                    this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
+                    this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
+                        { x: this.targetDestination.col, y: this.targetDestination.row });
+                }
 
-                        if (this.body.x < wallX + wallWidth &&
-                            this.body.x + this.body.width > wallX &&
-                            this.body.y < wallY + wallHeight &&
-                            this.body.y + this.body.height > wallY) {
-                            // Collision detected, revert to the previous position
-                            this.body.x = prevX;
-                            this.body.y = prevY;
-                            changePath = true;
-                            break;
-                        }
-                    }
+                // Calculate velocity based on the new position
+                this.velocityX = this.body.x - prevX;
+                this.velocityY = this.body.y - prevY;
+
+                if (this.velocityX !== 0 || this.velocityY !== 0) {
+                    this.movementAngle = Math.atan2(this.velocityY, this.velocityX);
                 }
             }
-
-
-            if (changePath && (this.wallPathChangeTimeAccumulator > this.wallPathChangeTime)) {
-                this.wallPathChangeTimeAccumulator = 0;
-                let currentCell = {
-                    row: Math.floor(this.body.y / cellHeight),
-                    col: Math.floor(this.body.x / cellWidth)
-                };
-
-                this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
-                this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
-                    { x: this.targetDestination.col, y: this.targetDestination.row });
-            }
-
-            // Calculate velocity based on the new position
-            this.velocityX = this.body.x - prevX;
-            this.velocityY = this.body.y - prevY;
-
-            if (this.velocityX !== 0 || this.velocityY !== 0) {
-                this.movementAngle = Math.atan2(this.velocityY, this.velocityX);
-            }
-
         }
 
         return res;

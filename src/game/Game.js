@@ -1,13 +1,96 @@
 import * as PIXI from 'pixi.js-legacy';
 import { Player } from "./Player.js"
 import { Cell } from "./Cell.js"
-import { BrownTank } from "./enemies/BrownTank.js"
-import { GreyTank } from "./enemies/GrayTank.js";
-import { GreenTank } from "./enemies/GreenTank.js";
-import { PinkTank } from "./enemies/PinkTank.js";
-import { BlackTank } from "./enemies/BlackTank.js";
+import { Tank } from './Tank.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const TANK_PRESETS = {
+    BROWN: {
+        x: 0,
+        y: 0,
+        color: 0xAC6902,
+        id: 4,
+        width: 18,
+        height: 18,
+        speed: 0,
+        bulletType: "normal",
+        maxBullets: 1,
+        shotDelayFunction: () => Math.random() * (100 - 80) + 80,
+        reflectedShotThreshold: 0.6,
+        predictiveDodgeDistanceThreshold: 0,
+    },
+    GRAY: {
+        x: 0,
+        y: 0,
+        color: 0x808080,
+        id: 5,
+        width: 18,
+        height: 18,
+        speed: 1.5,
+        bulletType: "normal",
+        maxBullets: 2,
+        shotDelayFunction: () => Math.random() * (100 - 80) + 80,
+        reflectedShotThreshold: 0.6,
+        predictiveDodgeDistanceThreshold: 120,
+    },
+    GREEN: {
+        x: 0,
+        y: 0,
+        color: 0x228B22,
+        id: 6,
+        width: 18,
+        height: 18,
+        speed: 1.75,
+        bulletType: "fire",
+        maxBullets: 1,
+        shotDelayFunction: () => Math.random() * (100 - 60) + 60,
+        reflectedShotThreshold: 0,
+        predictiveDodgeDistanceThreshold: 80,
+    },
+    PINK: {
+        x: 0,
+        y: 0,
+        color: 0xC35C70,
+        id: 7,
+        width: 18,
+        height: 18,
+        speed: 2,
+        bulletType: "normal",
+        maxBullets: 5,
+        shotDelayFunction: () => Math.random() * (50 - 20) + 20,
+        reflectedShotThreshold: 0.5,
+        predictiveDodgeDistanceThreshold: 70,
+    },
+    BLACK: {
+        x: 0,
+        y: 0,
+        color: 0x000000,
+        id: 8,
+        width: 18,
+        height: 18,
+        speed: 2.25,
+        bulletType: "fire",
+        maxBullets: 5,
+        shotDelayFunction: () => Math.random() * (60 - 30) + 30,
+        reflectedShotThreshold: 0,
+        predictiveDodgeDistanceThreshold: 80,
+    },
+    RED: {
+        x: 0,
+        y: 0,
+        color: 0xDC143C,
+        id: 9,
+        width: 18,
+        height: 18,
+        speed: 2.0,
+        bulletType: "both",
+        maxBullets: 5,
+        shotDelayFunction: () => Math.random() * (45 - 25) + 25,
+        reflectedShotThreshold: 0.5,
+        predictiveDodgeDistanceThreshold: 80,
+    },
+};
 
 export class Game {
     constructor() {
@@ -81,16 +164,22 @@ export class Game {
         }
     }
 
+    createTank(type, x, y) {
+        const p = TANK_PRESETS[type];
+        return new Tank(
+            x, y,
+            p.color, p.id, p.width, p.height, p.speed,
+            p.bulletType, p.maxBullets, p.shotDelayFunction,
+            p.reflectedShotThreshold, p.predictiveDodgeDistanceThreshold
+        );
+    }
+
+
     setup(run_id, container) {
         this.container = container
         this.run_id = run_id;
 
         container.appendChild(this.app.view);
-
-        console.log('Hardware acceleration disabled?', navigator.hardwareConcurrency === 0);
-        console.log('WebGL context available?', !!document.createElement('canvas').getContext('webgl'));
-        console.log('PixiJS renderer type:', this.app.renderer.type);
-        console.log('PixiJS renderer name:', this.app.renderer.constructor.name);
 
         // Load level from server instead of file
         this.loadLevelFromServer().then(loadedData => {
@@ -275,40 +364,45 @@ export class Game {
     }
 
     updateGridDangerValues(bullets, player, bulletDangerFactor, playerDangerFactor, predictionSteps) {
-        let gridRows = this.physicalMap.length;
-        let gridCols = this.physicalMap[0].length;
+        const gridRows = this.physicalMap.length;
+        const gridCols = this.physicalMap[0].length;
+        const cellSize = this.physicalMap[0][0].width; // safer than hardcoding 20
 
-        // Reset grid values
+        // Reset danger
         for (let i = 0; i < gridRows; i++) {
             for (let j = 0; j < gridCols; j++) {
-                this.physicalMap[i][j].dangerValue = 0
-                // if (this.physicalMap[i][j].getCellType() === 'wall') {
-                //     this.physicalMap[i][j].body.tint = 0xFFFFFF;
-                // }
+                this.physicalMap[i][j].dangerValue = 0;
             }
         }
 
-        // Update danger values based on bullets and their predicted paths
+        // Bullets danger
         bullets.forEach(bullet => {
             for (let step = 0; step <= predictionSteps; step++) {
-                let predictedBulletRow = Math.floor((bullet.body.y + bullet.velocityY * step) / 20);
-                let predictedBulletCol = Math.floor((bullet.body.x + bullet.velocityX * step) / 20);
+                const bx = bullet.body.x + bullet.velocityX * step;
+                const by = bullet.body.y + bullet.velocityY * step;
 
-                if (predictedBulletRow >= 0 && predictedBulletRow < gridRows && predictedBulletCol >= 0 && predictedBulletCol < gridCols) {
-                    this.physicalMap[predictedBulletRow][predictedBulletCol].dangerValue += bulletDangerFactor / (step + 1); // Reduce danger value with distance
+                const row = Math.floor(by / cellSize);
+                const col = Math.floor(bx / cellSize);
+
+                if (row >= 0 && row < gridRows && col >= 0 && col < gridCols) {
+                    const falloff = bulletDangerFactor / (step + 1);
+                    this.physicalMap[row][col].dangerValue += falloff;
                 }
             }
         });
 
-        // Update danger values based on player proximity
-        let playerRow = Math.floor(player.body.y / 20);
-        let playerCol = Math.floor(player.body.x / 20);
+        // Player danger
+        const playerRow = Math.floor(player.body.y / cellSize);
+        const playerCol = Math.floor(player.body.x / cellSize);
 
         for (let i = 0; i < gridRows; i++) {
             for (let j = 0; j < gridCols; j++) {
                 if (!this.isWallBlocking(playerRow, playerCol, i, j)) {
-                    let distance = Math.max(Math.abs(i - playerRow), Math.abs(j - playerCol));
-                    let dangerValue = playerDangerFactor - 0.1 * distance;
+                    const dx = i - playerRow;
+                    const dy = j - playerCol;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    const dangerValue = Math.max(0, playerDangerFactor - 0.1 * distance);
                     if (dangerValue > 0) {
                         this.physicalMap[i][j].dangerValue += dangerValue;
                     }
@@ -406,23 +500,23 @@ export class Game {
                             break;
 
                         case 'brown':
-                            newTank = new BrownTank(j * this.cellWidth, i * this.cellHeight, 18, 18);
+                            newTank = this.createTank("BROWN", j * this.cellWidth, i * this.cellHeight)
                             break;
 
                         case 'grey':
-                            newTank = new GreyTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 1.4);
+                            newTank = this.createTank("GRAY", j * this.cellWidth, i * this.cellHeight)
                             break;
 
                         case 'green':
-                            newTank = new GreenTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 1.75);
+                            newTank = this.createTank("GREEN", j * this.cellWidth, i * this.cellHeight)
                             break;
 
                         case 'pink':
-                            newTank = new PinkTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 2);
+                            newTank = this.createTank("PINK", j * this.cellWidth, i * this.cellHeight)
                             break;
 
                         case 'black':
-                            newTank = new BlackTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 2.25);
+                            newTank = this.createTank("BLACK", j * this.cellWidth, i * this.cellHeight)
                             break;
                     }
 
@@ -440,31 +534,31 @@ export class Game {
                 }
 
                 if (inputMap[i][j] === 4) {
-                    newTank = new BrownTank(j * this.cellWidth, i * this.cellHeight, 18, 18);
-                    this.tanks.push(newTank);
-                    this.app.stage.addChild(newTank.body);
-                    this.teamB.push(newTank);
-                    // Brown tank is stationary, needs no pathfinder
+                    newTank = this.createTank("BROWN", j * this.cellWidth, i * this.cellHeight)
                 }
 
                 if (inputMap[i][j] === 5) {
-                    newTank = new GreyTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 1.4);
-                    this.tanks.push(newTank);
-                    this.app.stage.addChild(newTank.body);
-                    newTank.setPathfinder(this.physicalMap);
-                    this.teamB.push(newTank);
+                    newTank = this.createTank("GRAY", j * this.cellWidth, i * this.cellHeight)
                 }
 
                 if (inputMap[i][j] === 6) {
-                    newTank = new GreenTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 1.75);
-                    this.tanks.push(newTank);
-                    this.app.stage.addChild(newTank.body);
-                    newTank.setPathfinder(this.physicalMap);
-                    this.teamB.push(newTank);
+                    newTank = this.createTank("GREEN", j * this.cellWidth, i * this.cellHeight)
                 }
 
                 if (inputMap[i][j] === 7) {
-                    newTank = new PinkTank(j * this.cellWidth, i * this.cellHeight, 18, 18, 2);
+                    newTank = this.createTank("PINK", j * this.cellWidth, i * this.cellHeight)
+                }
+
+                if (inputMap[i][j] === 8) {
+                    newTank = this.createTank("BLACK", j * this.cellWidth, i * this.cellHeight)
+                }
+
+                if (inputMap[i][j] === 9) {
+                    newTank = this.createTank("RED", j * this.cellWidth, i * this.cellHeight)
+                }
+
+                // Only IDs greater than 3 are tanks
+                if (inputMap[i][j] > 3) {
                     this.tanks.push(newTank);
                     this.app.stage.addChild(newTank.body);
                     newTank.setPathfinder(this.physicalMap);

@@ -4,12 +4,16 @@
   font-weight: 400;
 
   color: rgba(255, 255, 255, 0.87);
-  background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
 
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizeLegacy;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  height: 100%;
+  background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
 }
 
 * {

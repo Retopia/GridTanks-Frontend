@@ -64,6 +64,10 @@ export class Cell {
                 return 0x009530;
             case 'pink':
                 return 0xC35C70;
+            case 'black':
+                return 0x000000;
+            case 'red':
+                return 0xDC143C;
             default:
                 return 0xFFFFFF;
         }

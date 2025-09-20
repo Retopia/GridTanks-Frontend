@@ -74,11 +74,11 @@ const GridTanks = () => {
 
             <div className="stats-bar">
                 <div className="stat-item">
-                    <span className="stat-number">5</span>
+                    <span className="stat-number">6</span>
                     Tank Types
                 </div>
                 <div className="stat-item">
-                    <span className="stat-number">10</span>
+                    <span className="stat-number">15</span>
                     Levels
                 </div>
                 <div className="stat-item">

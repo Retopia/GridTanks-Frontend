@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import './App.css'
-import GameScene from './game/GameScene';
-import ScoreSubmissionScene from './ScoreSubmissionScene';
-import LeaderboardScene from './LeaderboardScene';
+import GameScene from './scenes/GameScene';
+import ScoreSubmissionScene from './scenes/ScoreSubmissionScene';
+import LeaderboardScene from './scenes/LeaderboardScene';
+import HowToPlayScene from './scenes/HowToPlayScene';
 
 const GridTanks = () => {
     // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission'
@@ -52,6 +53,7 @@ const GridTanks = () => {
                 <div className="logo-container">
                     <h1 className="game-title">GRID TANKS</h1>
                     <p className="subtitle">Heavily inspired by Wii Play Tanks</p>
+                    <p className="subtitle">Made by Preston Tang</p>
                 </div>
 
                 <div className="menu-buttons">
@@ -80,28 +82,9 @@ const GridTanks = () => {
                     Levels
                 </div>
                 <div className="stat-item">
-                    <span className="stat-number">3</span>
+                    <span className="stat-number">∞</span>
                     Lives
                 </div>
-            </div>
-        </div>
-    );
-
-    // How to Play Scene Component (placeholder)
-    const HowToPlayScene = () => (
-        <div className="scene-basic">
-            <div className="scene-content">
-                <h2 className="scene-title">How to Play</h2>
-                <div className="scene-text">
-                    <p>• Use WASD keys to move your tank</p>
-                    <p>• Click to shoot bullets at enemy tanks</p>
-                    <p>• Eliminate all enemy tanks to advance to the next level</p>
-                    <p>• You have 3 lives - avoid enemy bullets!</p>
-                    <p>• Each tank type has different speed and bullet patterns</p>
-                </div>
-                <button className="back-button" onClick={switchToMenu}>
-                    Back to Menu
-                </button>
             </div>
         </div>
     );
@@ -114,9 +97,9 @@ const GridTanks = () => {
             case 'game':
                 return <GameScene switchToMenu={switchToMenu} switchToScoreSubmission={switchToScoreSubmission} />;
             case 'howto':
-                return <HowToPlayScene />;
+                return <HowToPlayScene switchToMenu={switchToMenu} />;
             case 'leaderboard':
-                return <LeaderboardScene switchToMenu={switchToMenu}/>;
+                return <LeaderboardScene switchToMenu={switchToMenu} />;
             case 'scoreSubmission':
                 return <ScoreSubmissionScene
                     runId={runId}

@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js-legacy';
 import { FireBullet } from "../bullets/FireBullet.js";
 import { AStarPathfinder } from "../AStarPathfinder.js";
 export class BlackTank {

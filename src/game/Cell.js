@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js-legacy';
 export class Cell {
     constructor(x, y, width, height, cellType) {
         this.x = x;

@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js-legacy';
 import { Player } from "./Player.js"
 import { Cell } from "./Cell.js"
 import { BrownTank } from "./enemies/BrownTank.js"
@@ -46,14 +47,18 @@ export class Game {
         this.isPlayerPlayable = true;
         this.playerSelectorValue = 'player';
 
-        // Add a property to track the last frame time
-        this.lastFrameTime = performance.now(); // Start with the current time
+        this.lastFrameTime = performance.now();
         this.frameCount = 0;
-        this.totalElapsedTime = 0;
+        this.fps = 0
+        this.fpsHistory = [];
+        this.maxHistoryLength = 30;
 
         this.updateGameStats = null;
         this.switchToScoreSubmission = null;
         this.gameStartTime = null;
+
+        this.container = null;
+        this.hasShownPerformanceWarning = false;
     }
 
     setGameStatsUpdater(updateFunction) {
@@ -70,14 +75,22 @@ export class Game {
                 currentLevel: this.currentLevel,
                 timer: this.formatTime(this.getGameTime()),
                 enemiesLeft: this.teamB.length,
-                totalEnemies: this.totalEnemies
+                totalEnemies: this.totalEnemies,
+                fps: this.fps
             });
         }
     }
 
-    setup(run_id) {
+    setup(run_id, container) {
+        this.container = container
         this.run_id = run_id;
-        document.getElementById('gameContainer').appendChild(this.app.view);
+
+        container.appendChild(this.app.view);
+
+        console.log('Hardware acceleration disabled?', navigator.hardwareConcurrency === 0);
+        console.log('WebGL context available?', !!document.createElement('canvas').getContext('webgl'));
+        console.log('PixiJS renderer type:', this.app.renderer.type);
+        console.log('PixiJS renderer name:', this.app.renderer.constructor.name);
 
         // Load level from server instead of file
         this.loadLevelFromServer().then(loadedData => {
@@ -128,6 +141,17 @@ export class Game {
                 }
             }
         });
+    }
+
+    showPerformanceWarning() {
+        // Call back to React to show warning
+        if (this.onPerformanceWarning) {
+            this.onPerformanceWarning();
+        }
+    }
+
+    setPerformanceWarningCallback(callback) {
+        this.onPerformanceWarning = callback;
     }
 
     async loadLevelFromServer() {
@@ -535,20 +559,28 @@ export class Game {
         return true;
     }
 
+    // Moving average FPS calculation
     updateFPS() {
         const currentFrameTime = performance.now();
-        const elapsedTime = currentFrameTime - this.lastFrameTime;
+        const deltaTime = currentFrameTime - this.lastFrameTime;
         this.lastFrameTime = currentFrameTime;
 
-        this.frameCount += 1;
-        this.totalElapsedTime += elapsedTime;
+        const instantFPS = 1000 / deltaTime;
 
-        // Calculate FPS once per second
-        if (this.totalElapsedTime >= 1000) {
-            const fps = this.frameCount;
-            this.frameCount = 0;
-            this.totalElapsedTime = 0;
-            console.log(fps)
+        this.fpsHistory.push(instantFPS);
+        if (this.fpsHistory.length > this.maxHistoryLength) {
+            this.fpsHistory.shift();
+        }
+
+        const sum = this.fpsHistory.reduce((a, b) => a + b, 0);
+        this.fps = Math.round(sum / this.fpsHistory.length);
+
+        // Check if using Canvas2D fallback
+        if (this.app.renderer.type === PIXI.RENDERER_TYPE.CANVAS && (this.fps < 40 && this.fpsHistory.length >= this.maxHistoryLength)) {
+            if (!this.hasShownPerformanceWarning) {
+                this.showPerformanceWarning();
+                this.hasShownPerformanceWarning = true;
+            }
         }
     }
 
@@ -591,8 +623,8 @@ export class Game {
         if (this.loadedLevel) {
             this.updateFPS();
 
-            // Update UI every 30 frames so its cheaper
-            if (this.frameCount % 30 === 0) {
+            // Update UI every 60 frames so its cheaper
+            if (this.frameCount % 60 === 0) {
                 this.updateUI();
             }
 
@@ -609,7 +641,9 @@ export class Game {
                 return;
             }
 
-            this.updateGridDangerValues(this.allBullets, this.player, 1.0, 1.0, 25);
+            if (this.frameCount % 10 === 0) {
+                this.updateGridDangerValues(this.allBullets, this.player, 1.0, 1.0, 25);
+            }
             // this.updateGridColors(0.5);
 
             // Loop through Team A tanks
@@ -689,7 +723,7 @@ export class Game {
         // TODO: Maybe implement removal of event listeners in the future, but it works as of now so maybe it's not needed
         this.app.ticker.stop();
         this.app.stage.removeChildren();
-        document.getElementById('gameContainer').removeChild(this.app.view);
+        this.container.removeChild(this.app.view);
         this.app = null;
     }
 }

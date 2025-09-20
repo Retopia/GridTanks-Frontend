@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js-legacy';
 export class FireBullet {
     constructor(owner, x, y) {
         this.owner = owner;

@@ -1,3 +1,4 @@
+import * as PIXI from 'pixi.js-legacy';
 import { Bullet } from "./bullets/Bullet.js"
 
 // player.js

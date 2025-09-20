@@ -1,4 +1,5 @@
 // Bullet.js
+import * as PIXI from 'pixi.js-legacy';
 export class Bullet {
     constructor(owner, x, y) {
         this.owner = owner;

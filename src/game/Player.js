@@ -98,9 +98,29 @@ export class Player {
             return bullet;
         }
         return null;
-
-
     }
+
+    // Axis-aligned bounding-box overlap
+    _aabbOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+        return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    }
+
+    // Would the player collide if their top-left were at (x, y)?
+    _collidesAt(x, y, mapWalls) {
+        const pw = this.body.width, ph = this.body.height;
+        for (let i = 0; i < mapWalls.length; i++) {
+            for (let j = 0; j < mapWalls[i].length; j++) {
+                const cell = mapWalls[i][j];
+                if (!this.isWallOrHole(cell)) continue;
+                const wb = cell.body;
+                if (this._aabbOverlap(x, y, pw, ph, wb.x, wb.y, wb.width, wb.height)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     update(delta, collisionLines, mouseX, mouseY, mapWalls) {
         this.prevX = this.body.x
@@ -114,51 +134,49 @@ export class Player {
 
         // Only allow movement after cooldown
         // This is to achieve the pausing effect like in Wii Tanks
+        // Only allow movement after cooldown (Wii Tanks-like pause)
         if (this.shootingCooldown <= 0) {
-            let dx = 0;
-            let dy = 0;
-
+            let dx = 0, dy = 0;
             if (this.keyState['w']) dy -= 1;
             if (this.keyState['s']) dy += 1;
             if (this.keyState['a']) dx -= 1;
             if (this.keyState['d']) dx += 1;
 
-            // Normalize diagonal speed
-            if (dx !== 0 && dy !== 0) {
-                dx *= Math.SQRT1_2; // 1/sqrt(2)
-                dy *= Math.SQRT1_2;
+            const base = this.speed * delta;
+            const diagonal = (dx !== 0 && dy !== 0);
+
+            // Start with possibly normalized steps
+            let stepX = dx * base;
+            let stepY = dy * base;
+            if (diagonal) {
+                stepX *= Math.SQRT1_2;
+                stepY *= Math.SQRT1_2;
             }
 
-            this.prevX = this.body.x
-            this.prevY = this.body.y
-
-            // Proposed new position
-            let newX = this.body.x + dx * this.speed * delta;
-            let newY = this.body.y + dy * this.speed * delta;
-
-            this.body.x = newX;
-            this.body.y = newY;
-
-            // Check for collision with walls
-            for (let i = 0; i < mapWalls.length; i++) {
-                for (let j = 0; j < mapWalls[i].length; j++) {
-                    if (this.isWallOrHole(mapWalls[i][j])) {
-                        let wallX = mapWalls[i][j].body.x;
-                        let wallY = mapWalls[i][j].body.y;
-                        let wallWidth = mapWalls[i][j].body.width;
-                        let wallHeight = mapWalls[i][j].body.height;
-
-                        if (this.body.x < wallX + wallWidth &&
-                            this.body.x + this.body.width > wallX &&
-                            this.body.y < wallY + wallHeight &&
-                            this.body.y + this.body.height > wallY) {
-                            // Collision detected, revert to the previous position
-                            this.body.x = this.prevX;
-                            this.body.y = this.prevY;
-                            break;
-                        }
-                    }
+            const tryAxis = (offX, offY) => {
+                if (offX === 0 && offY === 0) return false;
+                const nx = this.body.x + offX;
+                const ny = this.body.y + offY;
+                if (!this._collidesAt(nx, ny, mapWalls)) {
+                    this.body.x = nx;
+                    this.body.y = ny;
+                    return true;
                 }
+                return false;
+            };
+
+            // Try dominant axis first
+            const tryXFirst = Math.abs(stepX) >= Math.abs(stepY);
+
+            if (tryXFirst) {
+                const movedX = tryAxis(stepX, 0);
+                // If diagonal and X failed but we have Y input, restore Y to full speed
+                const yStep = (!movedX && diagonal && dy !== 0) ? Math.sign(stepY) * base : stepY;
+                tryAxis(0, yStep);
+            } else {
+                const movedY = tryAxis(0, stepY);
+                const xStep = (!movedY && diagonal && dx !== 0) ? Math.sign(stepX) * base : stepX;
+                tryAxis(xStep, 0);
             }
         }
     }

@@ -4,7 +4,7 @@
   font-weight: 400;
 
   color: rgba(255, 255, 255, 0.87);
-  background-color: #0f1419;
+  background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #2d3748 100%);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

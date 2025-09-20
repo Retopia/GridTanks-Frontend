@@ -1,14 +1,71 @@
 <!doctype html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GridTanks</title>
-    <script defer data-domain="gridtanks.net" src="https://analytics.prestontang.dev/js/script.outbound-links.js"></script>
-  </head>
-  <body>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <!-- SEO Meta Tags -->
+    <title>GridTanks - Tank Battle Game Inspired by Wii Play</title>
+    <meta name="description"
+        content="Play GridTanks, a browser-based tank battle game inspired by Wii Play Tanks. Complete 10 levels, compete on leaderboards, and enjoy unlimited lives in this free online game.">
+    <meta name="keywords"
+        content="tank game, browser game, Wii Play Tanks, online game, free game, tank battle, leaderboard, web game">
+    <meta name="author" content="Preston Tang">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gridtanks.net/">
+    <meta property="og:title" content="GridTanks - Tank Battle Game">
+    <meta property="og:description"
+        content="Play GridTanks, a browser-based tank battle game inspired by Wii Play Tanks. Complete 10 levels and compete on leaderboards.">
+    <meta property="og:image" content="https://gridtanks.net/logo.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://gridtanks.net/">
+    <meta property="twitter:title" content="GridTanks - Tank Battle Game">
+    <meta property="twitter:description"
+        content="Play GridTanks, a browser-based tank battle game inspired by Wii Play Tanks. Complete 10 levels and compete on leaderboards.">
+    <meta property="twitter:image" content="https://gridtanks.net/logo.png">
+
+    <!-- Additional SEO -->
+    <link rel="canonical" href="https://gridtanks.net/">
+    <meta name="theme-color" content="#FF6B35">
+
+    <script defer data-domain="gridtanks.net"
+        src="https://analytics.prestontang.dev/js/script.outbound-links.js"></script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "GridTanks",
+        "description": "A browser-based tank battle game inspired by Wii Play Tanks with 10 levels and competitive leaderboards",
+        "url": "https://gridtanks.net",
+        "author": {
+            "@type": "Person",
+            "name": "Preston Tang",
+            "url": "https://prestontang.dev"
+        },
+        "gamePlatform": "Web Browser",
+        "applicationCategory": "Game",
+        "genre": "Action",
+        "numberOfPlayers": "1",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+</script>
+</head>
+
+<body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-  </body>
+</body>
+
 </html>

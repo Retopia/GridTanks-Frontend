@@ -687,6 +687,12 @@ export class Game {
 
         const data = await response.json();
 
+        if (data.level_complete) {
+            this.loadLevel();
+            this.currentLevel += 1
+            return;
+        }
+
         if (data.game_complete) {
             console.log('Game completed!');
             this.cleanup();
@@ -725,13 +731,6 @@ export class Game {
             // Player death
             if (this.teamA.length == 0) {
                 this.loadLevel();
-                return;
-            }
-
-            // Advance to next level
-            if (this.tanks.length === 1 && this.tanks[0] === this.player) {
-                this.loadLevel();
-                this.currentLevel += 1
                 return;
             }
 

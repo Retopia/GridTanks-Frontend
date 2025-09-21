@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css'
 import GameScene from './scenes/GameScene';
 import ScoreSubmissionScene from './scenes/ScoreSubmissionScene';
@@ -8,7 +8,17 @@ import HowToPlayScene from './scenes/HowToPlayScene';
 const GridTanks = () => {
     // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission'
     const [currentScene, setCurrentScene] = useState('menu');
-    const [runId, setRunId] = useState("")
+    const [runId, setRunId] = useState("");
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detect mobile devices
+    useEffect(() => {
+        const checkMobile = () => {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            return /android|iphone|ipad|ipod|opera mini|iemobile|mobile/i.test(userAgent.toLowerCase());
+        };
+        setIsMobile(checkMobile());
+    }, []);
 
     // Scene switching functions
     const switchToGame = () => {
@@ -110,6 +120,18 @@ const GridTanks = () => {
                 return <MainMenu />;
         }
     };
+
+    // If mobile, show modal instead of game
+    if (isMobile) {
+        return (
+            <div className="mobile-modal">
+                <div className="mobile-modal-content">
+                    <h2>🚫 Mobile Not Supported</h2>
+                    <p>Please use a desktop device to play Grid Tanks.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{ margin: 0, padding: 0 }}>

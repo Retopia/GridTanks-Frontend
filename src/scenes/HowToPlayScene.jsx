@@ -8,14 +8,14 @@ const HowToPlayScene = ({ switchToMenu }) => (
                     <div className="card-icon">🎮</div>
                     <h3>Controls</h3>
                     <p>WASD to move</p>
-                    <p>Click to shoot</p>
+                    <p>Click to shoot up to 5 bullets</p>
                 </div>
 
                 <div className="how-to-play-card">
                     <div className="card-icon">🎯</div>
                     <h3>Goal</h3>
                     <p>Eliminate all enemy tanks</p>
-                    <p>Complete 10 levels</p>
+                    <p>Complete 15 levels</p>
                 </div>
 
                 <div className="how-to-play-card">

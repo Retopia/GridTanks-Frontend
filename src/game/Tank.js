@@ -438,7 +438,7 @@ export class Tank {
         };
 
         // How far ahead to predict bullets (in frames scaled by delta)
-        const lookahead = 30; // e.g. ~10 frames ahead at 60fps
+        const lookahead = 10; // e.g. ~10 frames ahead at 60fps
         const lookaheadFactor = delta * lookahead;
 
         for (let bullet of allBullets) {

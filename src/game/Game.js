@@ -687,16 +687,16 @@ export class Game {
 
         const data = await response.json();
 
-        if (data.level_complete) {
-            this.loadLevel();
-            this.currentLevel += 1
-            return;
-        }
-
         if (data.game_complete) {
             console.log('Game completed!');
             this.cleanup();
             this.switchToScoreSubmission(this.run_id);
+            return;
+        }
+
+        if (data.level_complete) {
+            this.loadLevel();
+            this.currentLevel += 1
             return;
         }
 

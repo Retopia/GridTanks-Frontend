@@ -143,6 +143,10 @@ export class Player {
             if (this.keyState['s']) dy += 1;
             if (this.keyState['a']) dx -= 1;
             if (this.keyState['d']) dx += 1;
+            if (this.keyState['W']) dy -= 1;
+            if (this.keyState['S']) dy += 1;
+            if (this.keyState['A']) dx -= 1;
+            if (this.keyState['D']) dx += 1;
 
             const base = this.speed * delta;
             const diagonal = (dx !== 0 && dy !== 0);

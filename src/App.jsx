@@ -4,9 +4,10 @@ import GameScene from './scenes/GameScene';
 import ScoreSubmissionScene from './scenes/ScoreSubmissionScene';
 import LeaderboardScene from './scenes/LeaderboardScene';
 import HowToPlayScene from './scenes/HowToPlayScene';
+import ChangelogScene from './scenes/ChangelogScene';
 
 const GridTanks = () => {
-    // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission'
+    // 'menu', 'game', 'howto', 'leaderboard', 'scoreSubmission', 'changelog'
     const [currentScene, setCurrentScene] = useState('menu');
     const [runId, setRunId] = useState("");
     const [isMobile, setIsMobile] = useState(false);
@@ -34,6 +35,11 @@ const GridTanks = () => {
     const switchToLeaderboard = () => {
         console.log('Opening leaderboard...');
         setCurrentScene('leaderboard');
+    };
+
+    const switchToChangelog = () => {
+        console.log('Opening changelog...');
+        setCurrentScene('changelog');
     };
 
     const switchToMenu = () => {
@@ -80,6 +86,10 @@ const GridTanks = () => {
                         <span>Leaderboard</span>
                     </button>
                 </div>
+
+                <div className="changelog-link" onClick={switchToChangelog}>
+                    v1.1.0 • View Changelog →
+                </div>
             </div>
 
             <div className="stats-bar">
@@ -110,6 +120,8 @@ const GridTanks = () => {
                 return <HowToPlayScene switchToMenu={switchToMenu} />;
             case 'leaderboard':
                 return <LeaderboardScene switchToMenu={switchToMenu} />;
+            case 'changelog':
+                return <ChangelogScene switchToMenu={switchToMenu} />;
             case 'scoreSubmission':
                 return <ScoreSubmissionScene
                     runId={runId}

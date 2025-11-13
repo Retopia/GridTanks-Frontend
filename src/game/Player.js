@@ -16,6 +16,15 @@ export class Player {
         // Short pause for tank movement after shooting
         this.cooldownPeriod = 5;
 
+        // Delay between shots when holding down mouse (in frames, lower = faster shooting)
+        this.shootDelay = 12;
+        
+        // Time since last shot (in frames)
+        this.timeSinceLastShot = 0;
+        
+        // Track if mouse button is being held down
+        this.isMouseDown = false;
+
         this.speed = speed;
         this.keyState = {};
 
@@ -74,6 +83,10 @@ export class Player {
     onKeyUp(event) {
         this.keyState[event.key] = false;
     }
+    
+    setMouseDown(isDown) {
+        this.isMouseDown = isDown;
+    }
 
     isAlive() {
         return this.alive;
@@ -85,7 +98,7 @@ export class Player {
 
     fireBullet() {
         // Limit the amount of bullets that tanks can fire
-        if (this.firedBullets < this.maxBullets) {
+        if (this.firedBullets < this.maxBullets && this.timeSinceLastShot >= this.shootDelay) {
             const angle = this.turret.rotation;
 
             // Calculate the starting position at the tip of the turret
@@ -97,6 +110,7 @@ export class Player {
 
             this.firedBullets += 1
             this.shootingCooldown = this.cooldownPeriod;
+            this.timeSinceLastShot = 0; // Reset the timer
             return bullet;
         }
         return null;
@@ -133,6 +147,9 @@ export class Player {
         if (this.shootingCooldown > 0) {
             this.shootingCooldown -= delta;
         }
+        
+        // Update time since last shot
+        this.timeSinceLastShot += delta;
 
         // Only allow movement after cooldown
         // This is to achieve the pausing effect like in Wii Tanks

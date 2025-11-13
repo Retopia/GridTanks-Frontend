@@ -223,11 +223,25 @@ export class Game {
 
         this.app.renderer.plugins.interaction.on('pointerdown', (e) => {
             if (e.data.button === 0 && this.player instanceof Player) {
+                this.player.setMouseDown(true);
+                // Fire immediately on first click
                 const bullet = this.player.fireBullet();
                 if (bullet) {
                     this.app.stage.addChild(bullet.body);
                     this.allBullets.push(bullet);
                 }
+            }
+        });
+
+        this.app.renderer.plugins.interaction.on('pointerup', (e) => {
+            if (e.data.button === 0 && this.player instanceof Player) {
+                this.player.setMouseDown(false);
+            }
+        });
+
+        this.app.renderer.plugins.interaction.on('pointerupoutside', (e) => {
+            if (e.data.button === 0 && this.player instanceof Player) {
+                this.player.setMouseDown(false);
             }
         });
     }
@@ -747,6 +761,15 @@ export class Game {
                 if (tank instanceof Player) {
                     // Shooting for players is handled separately
                     this.player.update(cappedDelta, this.collisionLines, this.mouseX, this.mouseY, this.physicalMap);
+                    
+                    // Handle continuous shooting while mouse is held down
+                    if (this.player.isMouseDown) {
+                        const bullet = this.player.fireBullet();
+                        if (bullet) {
+                            this.app.stage.addChild(bullet.body);
+                            this.allBullets.push(bullet);
+                        }
+                    }
                 } else {
                     firedBullets = tank.update(cappedDelta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamA, this.teamB);
                 }

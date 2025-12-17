@@ -277,6 +277,8 @@
     justify-content: center;
     color: #ffffff;
     font-family: 'Inter', sans-serif;
+    padding: 40px 0;
+    box-sizing: border-box;
 }
 
 .scene-content {
@@ -708,10 +710,12 @@
     animation: none;
     padding: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    min-height: 24px;
+    align-items: center;
 }
 
 .skeleton-item {
-    height: 16px;
+    height: 18px;
     background: linear-gradient(90deg,
             rgba(255, 255, 255, 0.1) 25%,
             rgba(255, 255, 255, 0.2) 50%,
@@ -724,23 +728,23 @@
 
 /* Different widths for different column types */
 .skeleton-rank {
-    width: 20px;
+    width: 30px;
 }
 
 .skeleton-username {
-    width: 70%;
+    width: 80%;
 }
 
 .skeleton-stage {
-    width: 40%;
-}
-
-.skeleton-time {
     width: 60%;
 }
 
+.skeleton-time {
+    width: 70%;
+}
+
 .skeleton-date {
-    width: 75%;
+    width: 85%;
 }
 
 @keyframes skeleton-loading {
@@ -858,13 +862,19 @@
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
+    .scene-basic {
+        padding: 20px 0 60px 0;
+        align-items: flex-start;
+    }
+
     .leaderboard-content {
         max-width: 100%;
         padding: 0 10px;
     }
 
     .leaderboard-header,
-    .leaderboard-row {
+    .leaderboard-row,
+    .skeleton-row {
         grid-template-columns: 40px 1fr 80px 80px 100px;
         gap: 8px;
         font-size: 12px;
@@ -881,6 +891,18 @@
     .pagination-button {
         padding: 6px 12px;
         font-size: 12px;
+    }
+
+    .skeleton-item {
+        height: 14px;
+    }
+
+    .back-button {
+        margin-bottom: 20px;
+    }
+
+    .form-buttons {
+        margin-bottom: 20px;
     }
 }
 

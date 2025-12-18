@@ -71,7 +71,7 @@ const LeaderboardScene = ({ switchToMenu }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>Stage Reached</div>
+                                <div>Stages Completed</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>

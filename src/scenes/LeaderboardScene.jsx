@@ -1,22 +1,32 @@
 import { useState, useEffect } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const normalizeMode = (mode) => (mode === 'coop' ? 'coop' : 'solo');
 
-const LeaderboardScene = ({ switchToMenu }) => {
+const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     const [leaderboardData, setLeaderboardData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit] = useState(10); // Show 10 entries per page
     const [hasMorePages, setHasMorePages] = useState(false);
+    const [leaderboardMode, setLeaderboardMode] = useState(normalizeMode(initialMode));
+
+    useEffect(() => {
+        const nextMode = normalizeMode(initialMode);
+        setLeaderboardMode(nextMode);
+        setCurrentPage(1);
+    }, [initialMode]);
 
     // Fetch leaderboard data
-    const fetchLeaderboard = async (page = 1) => {
+    const fetchLeaderboard = async (page = 1, mode = leaderboardMode) => {
         try {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`${API_BASE_URL}/leaderboard?page=${page}&limit=${limit}`);
+            const response = await fetch(
+                `${API_BASE_URL}/leaderboard?page=${page}&limit=${limit}&mode=${encodeURIComponent(mode)}`
+            );
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch leaderboard: ${response.status}`);
@@ -38,8 +48,8 @@ const LeaderboardScene = ({ switchToMenu }) => {
 
     // Fetch data on component mount and when page changes
     useEffect(() => {
-        fetchLeaderboard(currentPage);
-    }, [currentPage]);
+        fetchLeaderboard(currentPage, leaderboardMode);
+    }, [currentPage, leaderboardMode]);
 
     // Handle pagination
     const goToNextPage = () => {
@@ -56,13 +66,38 @@ const LeaderboardScene = ({ switchToMenu }) => {
 
     // Retry function for error state
     const handleRetry = () => {
-        fetchLeaderboard(currentPage);
+        fetchLeaderboard(currentPage, leaderboardMode);
+    };
+
+    const handleModeChange = (nextMode) => {
+        const normalizedMode = normalizeMode(nextMode);
+        if (normalizedMode === leaderboardMode) {
+            return;
+        }
+        setLeaderboardMode(normalizedMode);
+        setCurrentPage(1);
     };
 
     return (
         <div className="scene-basic">
             <div className="leaderboard-content">
                 <h2 className="scene-title">Leaderboard</h2>
+                <div className="leaderboard-mode-toggle">
+                    <button
+                        className={`leaderboard-mode-button ${leaderboardMode === 'solo' ? 'active' : ''}`}
+                        onClick={() => handleModeChange('solo')}
+                        disabled={loading}
+                    >
+                        Solo
+                    </button>
+                    <button
+                        className={`leaderboard-mode-button ${leaderboardMode === 'coop' ? 'active' : ''}`}
+                        onClick={() => handleModeChange('coop')}
+                        disabled={loading}
+                    >
+                        Co-op
+                    </button>
+                </div>
 
                 {/* Skeleton Loading State */}
                 {loading && (
@@ -139,7 +174,7 @@ const LeaderboardScene = ({ switchToMenu }) => {
                                 ))
                             ) : (
                                 <div className="no-data">
-                                    <p>No leaderboard entries found.</p>
+                                    <p>No {leaderboardMode === 'coop' ? 'co-op' : 'solo'} leaderboard entries found.</p>
                                 </div>
                             )}
                         </div>

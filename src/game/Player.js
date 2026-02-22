@@ -3,7 +3,7 @@ import { Bullet } from "./bullets/Bullet.js"
 
 // player.js
 export class Player {
-    constructor(x, y, width, height, speed) {
+    constructor(x, y, width, height, speed, options = {}) {
         this.body = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.body.tint = 0x007ACC;
         this.id = 3;
@@ -41,7 +41,10 @@ export class Player {
 
         this.body.addChild(this.turret);
 
-        this.setupKeyboard();
+        this.enableKeyboard = options.enableKeyboard !== false;
+        if (this.enableKeyboard) {
+            this.setupKeyboard();
+        }
 
         this.alive = true;
     }

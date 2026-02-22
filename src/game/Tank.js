@@ -52,7 +52,7 @@ export class Tank {
     }
 
     isAlive() {
-        return this.isAlive;
+        return this.alive;
     }
 
     setAlive(alive) {
@@ -531,6 +531,12 @@ export class Tank {
         let cellWidth = 20;
         let canShoot = false;
         player = this.getClosestTarget(enemyTeam);
+        if (!player || !player.body) {
+            return res;
+        }
+        if (!Array.isArray(mapWalls) || mapWalls.length === 0 || !Array.isArray(mapWalls[0])) {
+            return res;
+        }
 
         if (this.recoilAnimationTime > 0) {
             this.recoilAnimationTime -= delta;
@@ -588,12 +594,24 @@ export class Tank {
             };
 
             if (this.speed > 0) {
+                if (!this.pathfinder) {
+                    return res;
+                }
+
                 // Determine if a new target destination is needed
                 if (!this.targetDestination ||
                     (this.targetDestination.row === currentCell.row && this.targetDestination.col === currentCell.col)) {
-                    this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
-                    this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
-                        { x: this.targetDestination.col, y: this.targetDestination.row });
+                    const nextDestination = this.findSafeDestination(mapWalls, currentCell, 15);
+                    if (nextDestination) {
+                        this.targetDestination = nextDestination;
+                        this.path = this.pathfinder.findPath(
+                            { x: currentCell.col, y: currentCell.row },
+                            { x: this.targetDestination.col, y: this.targetDestination.row }
+                        );
+                    } else {
+                        this.targetDestination = currentCell;
+                        this.path = [];
+                    }
                 }
 
                 let changePath = false;
@@ -656,9 +674,17 @@ export class Tank {
                         col: Math.floor(this.body.x / cellWidth)
                     };
 
-                    this.targetDestination = this.findSafeDestination(mapWalls, currentCell, 15);
-                    this.path = this.pathfinder.findPath({ x: currentCell.col, y: currentCell.row },
-                        { x: this.targetDestination.col, y: this.targetDestination.row });
+                    const nextDestination = this.findSafeDestination(mapWalls, currentCell, 15);
+                    if (nextDestination) {
+                        this.targetDestination = nextDestination;
+                        this.path = this.pathfinder.findPath(
+                            { x: currentCell.col, y: currentCell.row },
+                            { x: this.targetDestination.col, y: this.targetDestination.row }
+                        );
+                    } else {
+                        this.targetDestination = currentCell;
+                        this.path = [];
+                    }
                 }
 
                 // Calculate velocity based on the new position

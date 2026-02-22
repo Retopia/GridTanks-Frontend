@@ -1,7 +1,7 @@
 // ScoreSubmissionScene.jsx
 import { useState, useEffect } from 'react';
 
-function ScoreSubmissionScene({ runId, switchToMenu, switchToLeaderboard }) {
+function ScoreSubmissionScene({ runId, sessionMode = 'solo', switchToMenu, switchToLeaderboard }) {
     const [formData, setFormData] = useState({
         username: '',
         email: ''
@@ -58,13 +58,14 @@ function ScoreSubmissionScene({ runId, switchToMenu, switchToLeaderboard }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     run_id: runId,  // Send run_id, let server calculate stats
+                    mode: sessionMode,
                     username: formData.username,
                     email: formData.email || null
                 })
             });
 
             if (response.ok) {
-                switchToLeaderboard();
+                switchToLeaderboard(sessionMode);
             }
         } catch (error) {
             console.error('Error submitting score:', error);
@@ -89,6 +90,7 @@ function ScoreSubmissionScene({ runId, switchToMenu, switchToLeaderboard }) {
                 {/* Use server stats instead of frontend stats */}
                 <div className="score-summary">
                     <div className="score-title">Your Final Score</div>
+                    <div className="score-mode-label">{sessionMode === 'coop' ? 'Co-op Run' : 'Solo Run'}</div>
                     <div className="score-stats">
                         <div className="stat">
                             <div className="stat-value">Level {serverStats.stages_completed}</div>

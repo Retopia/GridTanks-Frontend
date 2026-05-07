@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Game } from '../game/Game';
 
 const toWebSocketBaseUrl = (httpBaseUrl) => {
@@ -63,7 +63,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
     const isCoopHost = isCoopSession && coopSession.role === 'host';
     const isCoopGuest = isCoopSession && coopSession.role === 'guest';
 
-    const cleanupRoomSocket = () => {
+    const cleanupRoomSocket = useCallback(() => {
         if (guestInputIntervalRef.current) {
             clearInterval(guestInputIntervalRef.current);
             guestInputIntervalRef.current = null;
@@ -82,9 +82,9 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
         }
 
         setCoopSocketStatus('disconnected');
-    };
+    }, []);
 
-    const cleanupGame = () => {
+    const cleanupGame = useCallback(() => {
         cleanupRoomSocket();
 
         if (gameRef.current) {
@@ -97,7 +97,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
         }
 
         hasInitialized.current = false;
-    };
+    }, [cleanupRoomSocket]);
 
     const handleFinishRun = async () => {
         console.log('Finishing run...');
@@ -270,7 +270,16 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
         return () => {
             cleanupGame();
         };
-    }, []);
+    }, [
+        API_BASE_URL,
+        cleanupGame,
+        coopSession,
+        isCoopGuest,
+        isCoopHost,
+        isCoopSession,
+        switchToMenu,
+        switchToScoreSubmission
+    ]);
 
     return (
         <div className="scene-basic">

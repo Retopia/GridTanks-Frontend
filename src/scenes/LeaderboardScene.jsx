@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const normalizeMode = (mode) => (mode === 'coop' ? 'coop' : 'solo');
@@ -19,7 +19,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     }, [initialMode]);
 
     // Fetch leaderboard data
-    const fetchLeaderboard = async (page = 1, mode = leaderboardMode) => {
+    const fetchLeaderboard = useCallback(async (page = 1, mode = leaderboardMode) => {
         try {
             setLoading(true);
             setError(null);
@@ -44,12 +44,12 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [leaderboardMode, limit]);
 
     // Fetch data on component mount and when page changes
     useEffect(() => {
         fetchLeaderboard(currentPage, leaderboardMode);
-    }, [currentPage, leaderboardMode]);
+    }, [currentPage, leaderboardMode, fetchLeaderboard]);
 
     // Handle pagination
     const goToNextPage = () => {

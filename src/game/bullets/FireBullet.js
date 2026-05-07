@@ -116,7 +116,7 @@ export class FireBullet {
             return bPriority - aPriority;
         });
 
-        let [collision, collisionLine] = collisions[0]; // Get the most relevant collision
+        let [, collisionLine] = collisions[0]; // Get the most relevant collision
 
         // Determine if the collision line is more horizontal or vertical
         let isLineHorizontal = Math.abs(collisionLine[1] - collisionLine[3]) < Math.abs(collisionLine[0] - collisionLine[2]);

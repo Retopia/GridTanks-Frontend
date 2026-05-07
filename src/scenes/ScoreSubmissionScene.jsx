@@ -39,7 +39,7 @@ function ScoreSubmissionScene({ runId, sessionMode = 'solo', switchToMenu, switc
         if (runId) {
             fetchStats();
         }
-    }, [runId]);
+    }, [API_BASE_URL, runId]);
 
     const handleInputChange = (e) => {
         setFormData({

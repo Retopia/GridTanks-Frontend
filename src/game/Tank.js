@@ -226,7 +226,7 @@ export class Tank {
         return null;
     }
 
-    canShootDirectlyAtPlayer(player, collisionLines, myTeam, enemyTeam) {
+    canShootDirectlyAtPlayer(player, collisionLines, myTeam) {
         // Draw a straight line from the tank to the player and see if it intersects any collision lines
         let lineStart = new PIXI.Point(this.body.x, this.body.y);
         let lineEnd = new PIXI.Point(player.body.x, player.body.y);
@@ -257,7 +257,7 @@ export class Tank {
         return true;
     }
 
-    canShootReflectedAtPlayer(player, collisionLines, myTeam, enemyTeam) {
+    canShootReflectedAtPlayer(player, collisionLines, myTeam) {
         let tankPosition = new PIXI.Point(this.body.x + this.body.width, this.body.y + this.body.height);
         let playerPosition = new PIXI.Point(player.body.x + player.body.width / 2, player.body.y + player.body.height / 2);
         let potentialShots = [];
@@ -412,11 +412,6 @@ export class Tank {
         return point.x >= rect.x && point.x <= rect.x + rect.width &&
             point.y >= rect.y && point.y <= rect.y + rect.height;
     }
-
-    distance(point1, point2) {
-        return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
-    }
-
 
     anyLineIntersection(start, end, lines) {
         for (let i = 0; i < lines.length; i++) {

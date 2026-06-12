@@ -125,10 +125,20 @@ export class Player {
     }
 
     // Would the player collide if their top-left were at (x, y)?
+    // The grid is uniform, so only the handful of cells the player overlaps
+    // need to be checked instead of the whole map.
     _collidesAt(x, y, mapWalls) {
         const pw = this.body.width, ph = this.body.height;
-        for (let i = 0; i < mapWalls.length; i++) {
-            for (let j = 0; j < mapWalls[i].length; j++) {
+        const cellW = mapWalls[0][0].width;
+        const cellH = mapWalls[0][0].height;
+
+        const startRow = Math.max(0, Math.floor(y / cellH));
+        const endRow = Math.min(mapWalls.length - 1, Math.floor((y + ph) / cellH));
+        const startCol = Math.max(0, Math.floor(x / cellW));
+        const endCol = Math.min(mapWalls[0].length - 1, Math.floor((x + pw) / cellW));
+
+        for (let i = startRow; i <= endRow; i++) {
+            for (let j = startCol; j <= endCol; j++) {
                 const cell = mapWalls[i][j];
                 if (!this.isWallOrHole(cell)) continue;
                 const wb = cell.body;

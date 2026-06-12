@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const normalizeMode = (mode) => (mode === 'coop' ? 'coop' : 'solo');
+const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
 
 const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     const [leaderboardData, setLeaderboardData] = useState([]);
@@ -97,6 +97,13 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                     >
                         Co-op
                     </button>
+                    <button
+                        className={`leaderboard-mode-button ${leaderboardMode === 'endless' ? 'active' : ''}`}
+                        onClick={() => handleModeChange('endless')}
+                        disabled={loading}
+                    >
+                        Endless
+                    </button>
                 </div>
 
                 {/* Skeleton Loading State */}
@@ -106,7 +113,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>Stage Reached</div>
+                                <div>{leaderboardMode === 'endless' ? 'Waves Survived' : 'Stage Reached'}</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>
@@ -157,7 +164,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>Stages Completed</div>
+                                <div>{leaderboardMode === 'endless' ? 'Waves Survived' : 'Stages Completed'}</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>
@@ -174,7 +181,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                                 ))
                             ) : (
                                 <div className="no-data">
-                                    <p>No {leaderboardMode === 'coop' ? 'co-op' : 'solo'} leaderboard entries found.</p>
+                                    <p>No {leaderboardMode === 'coop' ? 'co-op' : leaderboardMode} leaderboard entries found.</p>
                                 </div>
                             )}
                         </div>

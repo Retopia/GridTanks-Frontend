@@ -90,11 +90,15 @@ function ScoreSubmissionScene({ runId, sessionMode = 'solo', switchToMenu, switc
                 {/* Use server stats instead of frontend stats */}
                 <div className="score-summary">
                     <div className="score-title">Your Final Score</div>
-                    <div className="score-mode-label">{sessionMode === 'coop' ? 'Co-op Run' : 'Solo Run'}</div>
+                    <div className="score-mode-label">
+                        {sessionMode === 'coop' ? 'Co-op Run' : (sessionMode === 'endless' ? 'Endless Run' : 'Solo Run')}
+                    </div>
                     <div className="score-stats">
                         <div className="stat">
-                            <div className="stat-value">Level {serverStats.stages_completed}</div>
-                            <div className="stat-label">Stages Completed</div>
+                            <div className="stat-value">
+                                {sessionMode === 'endless' ? `Wave ${serverStats.stages_completed}` : `Level ${serverStats.stages_completed}`}
+                            </div>
+                            <div className="stat-label">{sessionMode === 'endless' ? 'Waves Survived' : 'Stages Completed'}</div>
                         </div>
                         <div className="stat">
                             <div className="stat-value">{serverStats.time}</div>

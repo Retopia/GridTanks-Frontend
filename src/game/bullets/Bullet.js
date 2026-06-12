@@ -1,5 +1,6 @@
 // Bullet.js
 import * as PIXI from 'pixi.js-legacy';
+import { soundManager } from '../SoundManager.js';
 export class Bullet {
     constructor(owner, x, y) {
         this.owner = owner;
@@ -147,6 +148,7 @@ export class Bullet {
         if (bulletCollision.collided) {
             this.toDestroy = true;
             bulletCollision.otherBullet.toDestroy = true;
+            soundManager.bulletPop();
             return; // End the update as the bullet will be destroyed
         }
 
@@ -164,6 +166,9 @@ export class Bullet {
                 this.bounces++;
                 if (this.bounces > 1) {
                     this.toDestroy = true;
+                    soundManager.bulletPop();
+                } else {
+                    soundManager.bounce();
                 }
             }
         } else {

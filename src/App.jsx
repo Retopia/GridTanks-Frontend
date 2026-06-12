@@ -20,6 +20,8 @@ const SCENES = {
     CHANGELOG: 'changelog'
 };
 
+const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
+
 const toWebSocketBaseUrl = (httpBaseUrl) => {
     if (!httpBaseUrl) {
         return '';
@@ -235,6 +237,11 @@ const GridTanks = () => {
         switchToGame();
     };
 
+    const switchToEndlessGame = () => {
+        setSelectedMode('endless');
+        switchToGame();
+    };
+
     const switchToCoopRoomSelect = () => {
         closeRoomSocket();
         setSelectedMode('coop');
@@ -412,8 +419,7 @@ const GridTanks = () => {
     };
 
     const switchToLeaderboard = (mode = 'solo') => {
-        const nextMode = mode === 'coop' ? 'coop' : 'solo';
-        setLeaderboardMode(nextMode);
+        setLeaderboardMode(normalizeMode(mode));
         console.log('Opening leaderboard...');
         setCurrentScene(SCENES.LEADERBOARD);
     };
@@ -432,9 +438,8 @@ const GridTanks = () => {
     };
 
     const switchToScoreSubmission = (newRunId, mode = selectedMode) => {
-        const nextMode = mode === 'coop' ? 'coop' : 'solo';
         setRunId(newRunId);
-        setScoreSubmissionMode(nextMode);
+        setScoreSubmissionMode(normalizeMode(mode));
         setCurrentScene(SCENES.SCORE_SUBMISSION);
     };
 
@@ -513,6 +518,10 @@ const GridTanks = () => {
                     <button className="flow-option-card" onClick={switchToCoopRoomSelect}>
                         <span className="flow-option-title">Co-op</span>
                         <span className="flow-option-text">Play the campaign with one friend online.</span>
+                    </button>
+                    <button className="flow-option-card" onClick={switchToEndlessGame}>
+                        <span className="flow-option-title">Endless</span>
+                        <span className="flow-option-text">Survive escalating waves. One life!</span>
                     </button>
                 </div>
 

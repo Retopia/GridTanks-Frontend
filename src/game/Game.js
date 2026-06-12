@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js-legacy';
 import { Player } from "./Player.js"
 import { Cell } from "./Cell.js"
 import { Tank } from './Tank.js';
+import { soundManager } from './SoundManager.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -105,6 +106,7 @@ export class Game {
         this.isCoop = this.sessionMode === 'coop';
         this.isCoopHost = this.isCoop && this.coopRole === 'host';
         this.isCoopGuest = this.isCoop && this.coopRole === 'guest';
+        this.isEndless = this.sessionMode === 'endless';
 
         this.currentLevel = 1;
 
@@ -169,6 +171,15 @@ export class Game {
 
         this.container = null;
         this.hasShownPerformanceWarning = false;
+
+        // Visual feedback state: explosion particles, level banners, screen
+        // shake, and the freeze-frame transition between levels.
+        this.effects = [];
+        this.banner = null;
+        this.transition = null;
+        this.shakeFrames = 0;
+        this.shakeTotalFrames = 0;
+        this.shakeMagnitude = 0;
     }
 
     setGameStatsUpdater(updateFunction) {
@@ -362,6 +373,8 @@ export class Game {
 
             const state = incomingTankMap.get(tank.networkId);
             if (!state) {
+                // Tank disappeared from the host snapshot — it was destroyed.
+                this.handleTankDestroyed(tank);
                 this.app.stage.removeChild(tank.body);
                 this.tanks.splice(i, 1);
 
@@ -463,6 +476,12 @@ export class Game {
             bullet.body.y = bulletState.y;
             bullet.body.rotation = bulletState.rotation || 0;
 
+            if (bulletState.kind === 'fire') {
+                soundManager.fireShoot();
+            } else {
+                soundManager.shoot();
+            }
+
             this.app.stage.addChild(bullet.body);
             this.allBullets.push(bullet);
             this.networkBulletMap.set(bullet.networkId, bullet);
@@ -480,6 +499,170 @@ export class Game {
                 totalEnemies: this.totalEnemies,
                 fps: this.fps
             });
+        }
+    }
+
+    spawnExplosion(x, y, options = {}) {
+        if (!this.app || !this.app.stage) {
+            return;
+        }
+
+        const big = Boolean(options.big);
+        const palette = [0xffa040, 0xffd966, 0xff6b35, 0xb0b0b0];
+        if (typeof options.color === 'number') {
+            palette.push(options.color, options.color);
+        }
+
+        const count = big ? 26 : 14;
+        for (let i = 0; i < count; i++) {
+            const particle = new PIXI.Graphics();
+            const color = palette[Math.floor(Math.random() * palette.length)];
+            particle.beginFill(color);
+            particle.drawCircle(0, 0, 1.5 + Math.random() * 2.5);
+            particle.endFill();
+            particle.x = x;
+            particle.y = y;
+
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 0.8 + Math.random() * (big ? 3.5 : 2.5);
+            const life = (big ? 30 : 22) + Math.random() * 20;
+
+            this.app.stage.addChild(particle);
+            this.effects.push({
+                body: particle,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life,
+                maxLife: life
+            });
+        }
+    }
+
+    startScreenShake(magnitude, frames) {
+        // Keep the stronger shake if one is already running.
+        if (this.shakeFrames > 0 && this.shakeMagnitude >= magnitude) {
+            return;
+        }
+        this.shakeMagnitude = magnitude;
+        this.shakeFrames = frames;
+        this.shakeTotalFrames = frames;
+    }
+
+    showBanner(message, frames, subMessage = '') {
+        if (!this.app || !this.app.stage) {
+            return;
+        }
+
+        if (this.banner) {
+            this.app.stage.removeChild(this.banner.text);
+            this.banner = null;
+        }
+
+        const content = subMessage ? `${message}\n${subMessage}` : message;
+        const text = new PIXI.Text(content, {
+            fontFamily: 'Arial',
+            fontSize: 38,
+            fontWeight: 'bold',
+            fill: 0xffffff,
+            stroke: 0x10161f,
+            strokeThickness: 6,
+            align: 'center'
+        });
+        text.anchor.set(0.5);
+        text.x = (this.cols * this.cellWidth) / 2;
+        text.y = (this.rows * this.cellHeight) / 2 - 40;
+
+        this.app.stage.addChild(text);
+        this.banner = { text, framesLeft: frames, fadeFrames: 30 };
+    }
+
+    // Freeze gameplay briefly with a banner, then run `action` (defaults to
+    // reloading the current level). Mirrors the Wii Tanks mission beat.
+    startLevelTransition(kind, action = null) {
+        if (this.transition) {
+            return;
+        }
+
+        const cleared = kind === 'cleared';
+        if (cleared) {
+            soundManager.levelCleared();
+        }
+
+        let bannerText;
+        if (cleared) {
+            bannerText = this.isEndless ? 'Wave Cleared!' : 'Level Cleared!';
+        } else {
+            bannerText = this.isEndless ? 'Run Over' : 'Level Failed';
+        }
+        this.showBanner(bannerText, 9999);
+
+        this.transition = {
+            framesLeft: cleared ? 80 : 70,
+            action: action || (async () => {
+                await this.loadLevel();
+                this.emitCoopSnapshotIfNeeded();
+            })
+        };
+    }
+
+    updateEffects(delta) {
+        if (!this.app || !this.app.stage) {
+            return;
+        }
+
+        for (let i = this.effects.length - 1; i >= 0; i--) {
+            const effect = this.effects[i];
+            effect.life -= delta;
+            if (effect.life <= 0) {
+                this.app.stage.removeChild(effect.body);
+                this.effects.splice(i, 1);
+                continue;
+            }
+
+            effect.body.x += effect.vx * delta;
+            effect.body.y += effect.vy * delta;
+            effect.vx *= 0.95;
+            effect.vy *= 0.95;
+            effect.body.alpha = effect.life / effect.maxLife;
+        }
+
+        if (this.banner) {
+            this.banner.framesLeft -= delta;
+            if (this.banner.framesLeft <= 0) {
+                this.app.stage.removeChild(this.banner.text);
+                this.banner = null;
+            } else if (this.banner.framesLeft < this.banner.fadeFrames) {
+                this.banner.text.alpha = this.banner.framesLeft / this.banner.fadeFrames;
+            }
+        }
+
+        if (this.shakeFrames > 0) {
+            this.shakeFrames -= delta;
+            if (this.shakeFrames <= 0) {
+                this.shakeFrames = 0;
+                this.app.stage.position.set(0, 0);
+            } else {
+                const magnitude = this.shakeMagnitude * (this.shakeFrames / this.shakeTotalFrames);
+                this.app.stage.position.set(
+                    (Math.random() * 2 - 1) * magnitude,
+                    (Math.random() * 2 - 1) * magnitude
+                );
+            }
+        }
+    }
+
+    handleTankDestroyed(tank) {
+        const centerX = tank.body.x + tank.body.width / 2;
+        const centerY = tank.body.y + tank.body.height / 2;
+        const isPlayerTank = tank.id === 3;
+
+        this.spawnExplosion(centerX, centerY, { big: isPlayerTank, color: tank.body.tint });
+        this.startScreenShake(isPlayerTank ? 8 : 3, isPlayerTank ? 30 : 12);
+
+        if (isPlayerTank) {
+            soundManager.playerDeath();
+        } else {
+            soundManager.explosion();
         }
     }
 
@@ -892,6 +1075,12 @@ export class Game {
             this.networkBulletMap.set(bullet.networkId, bullet);
         }
 
+        if (bullet.bulletSpeed > 4) {
+            soundManager.fireShoot();
+        } else {
+            soundManager.shoot();
+        }
+
         this.app.stage.addChild(bullet.body);
         this.allBullets.push(bullet);
     }
@@ -1121,6 +1310,12 @@ export class Game {
         this.loadedLevel = true;
         this.totalEnemies = this.teamB.length
         this.refreshPlayerReferences();
+
+        const enemyLabel = this.totalEnemies === 1 ? 'Enemy' : 'Enemies';
+        const stageLabel = this.isEndless ? 'Wave' : 'Level';
+        this.showBanner(`${stageLabel} ${this.currentLevel}`, 130, `${this.totalEnemies} ${enemyLabel}`);
+        soundManager.levelStart();
+
         return true;
     }
 
@@ -1205,6 +1400,10 @@ export class Game {
         this.playerTwo = null;
         this.localPlayer = null;
         this.remotePlayer = null;
+        this.effects = [];
+        this.banner = null;
+        this.shakeFrames = 0;
+        this.app.stage.position.set(0, 0);
         this.app.stage.removeChildren();
     }
 
@@ -1271,26 +1470,53 @@ export class Game {
             }
 
             if (data.game_complete) {
-                console.log('Game completed!');
-                this.cleanup();
-                this.switchToScoreSubmission(this.run_id, this.sessionMode);
+                console.log('Run finished!');
+                const finishRun = () => {
+                    this.cleanup();
+                    this.switchToScoreSubmission(this.run_id, this.sessionMode);
+                };
+
+                if (this.transition) {
+                    // A death ceremony is already holding the frame (endless
+                    // run over) — finish the run when it ends instead of
+                    // reloading the level.
+                    this.transition.action = finishRun;
+                } else if (this.isEndless) {
+                    // Endless game_complete only comes from dying.
+                    this.startLevelTransition('failed', finishRun);
+                } else {
+                    // Campaign completed: celebrate the final level first.
+                    this.startLevelTransition('cleared', finishRun);
+                }
                 return data;
             }
 
             if (data.level_complete) {
-                if (typeof data.next_level === 'number') {
-                    this.currentLevel = data.next_level;
+                const nextLevel = (typeof data.next_level === 'number')
+                    ? data.next_level
+                    : this.currentLevel + 1;
+
+                if (this.transition) {
+                    // A reset transition is already running (e.g. the player died
+                    // the same moment the last enemy fell) — just adopt the new
+                    // level number; the queued action reloads from the server.
+                    this.currentLevel = nextLevel;
                 } else {
-                    this.currentLevel += 1;
+                    // Don't bump currentLevel until the freeze ends, so co-op
+                    // snapshots stay consistent while the final frame is held.
+                    this.startLevelTransition('cleared', async () => {
+                        this.currentLevel = nextLevel;
+                        await this.loadLevel();
+                        this.emitCoopSnapshotIfNeeded();
+                    });
                 }
-                await this.loadLevel();
-                this.emitCoopSnapshotIfNeeded();
                 return data;
             }
 
             if (data.level_reset) {
-                await this.loadLevel();
-                this.emitCoopSnapshotIfNeeded();
+                // The game loop usually starts this transition the frame the
+                // player dies; this is a no-op in that case.
+                this.startLevelTransition('failed');
                 return data;
             }
 
@@ -1326,6 +1552,10 @@ export class Game {
             return;
         }
 
+        // Particles, banners, and screen shake run for everyone (including
+        // co-op guests) and even during level transitions.
+        this.updateEffects(cappedDelta);
+
         // Guest clients render snapshots from host and only send local input.
         if (this.isCoopGuest) {
             return;
@@ -1337,8 +1567,21 @@ export class Game {
             this.updateUI();
         }
 
+        // Freeze-frame between levels: hold the final frame with the banner
+        // visible, then run the queued action (level load).
+        if (this.transition) {
+            this.transition.framesLeft -= cappedDelta;
+            if (this.transition.framesLeft <= 0) {
+                const action = this.transition.action;
+                this.transition = null;
+                action();
+            }
+            this.emitCoopSnapshotIfNeeded();
+            return;
+        }
+
         if (this.teamA.length === 0) {
-            this.loadLevel();
+            this.startLevelTransition('failed');
             return;
         }
 
@@ -1398,6 +1641,7 @@ export class Game {
             const bullet = this.allBullets[i];
             const collided = this.checkCollision(bullet);
             if (collided) {
+                this.handleTankDestroyed(collided.tank);
                 this.app.stage.removeChild(collided.tank.body);
                 this.tanks.splice(collided.tankIndex, 1);
                 collided.tank.setAlive(false)

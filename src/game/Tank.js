@@ -508,15 +508,26 @@ export class Tank {
         return res;
     }
 
+    // The grid is uniform, so only the handful of cells the tank overlaps
+    // need to be checked instead of the whole map.
     collidesWithWalls(mapWalls) {
-        for (let i = 0; i < mapWalls.length; i++) {
-            for (let j = 0; j < mapWalls[i].length; j++) {
+        const bw = this.body.width, bh = this.body.height;
+        const cellW = mapWalls[0][0].width;
+        const cellH = mapWalls[0][0].height;
+
+        const startRow = Math.max(0, Math.floor(this.body.y / cellH));
+        const endRow = Math.min(mapWalls.length - 1, Math.floor((this.body.y + bh) / cellH));
+        const startCol = Math.max(0, Math.floor(this.body.x / cellW));
+        const endCol = Math.min(mapWalls[0].length - 1, Math.floor((this.body.x + bw) / cellW));
+
+        for (let i = startRow; i <= endRow; i++) {
+            for (let j = startCol; j <= endCol; j++) {
                 if (this.isWallOrHole(mapWalls[i][j])) {
                     let wall = mapWalls[i][j].body;
                     if (this.body.x < wall.x + wall.width &&
-                        this.body.x + this.body.width > wall.x &&
+                        this.body.x + bw > wall.x &&
                         this.body.y < wall.y + wall.height &&
-                        this.body.y + this.body.height > wall.y) {
+                        this.body.y + bh > wall.y) {
                         return true;
                     }
                 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/Game';
+import { soundManager } from '../game/SoundManager';
 
 const toWebSocketBaseUrl = (httpBaseUrl) => {
     if (!httpBaseUrl) {
@@ -40,6 +41,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
     const lastGuestInputRef = useRef(null);
 
     const [showPerformanceWarning, setShowPerformanceWarning] = useState(false);
+    const [isMuted, setIsMuted] = useState(soundManager.muted);
     const [runId, setRunId] = useState(null);
     const [coopSocketStatus, setCoopSocketStatus] = useState('disconnected');
     const [gameStats, setGameStats] = useState({
@@ -134,9 +136,16 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             }
 
             const gameInstance = new Game({
-                sessionMode: isCoopSession ? 'coop' : 'solo',
+                sessionMode: isCoopSession ? 'coop' : (sessionMode === 'endless' ? 'endless' : 'solo'),
                 coopRole: isCoopSession ? coopSession.role : 'host'
             });
+
+            // Register on the ref immediately (not after the awaits below) so
+            // an unmount during init — e.g. React StrictMode's dev double
+            // mount — disposes this instance instead of orphaning it. An
+            // orphaned instance appends a second canvas and runs a second
+            // game loop on top of the real one.
+            gameRef.current = gameInstance;
 
             gameInstance.setGameStatsUpdater(setGameStats);
             gameInstance.setScoreSubmissionSwitcher(switchToScoreSubmission);
@@ -150,7 +159,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 const response = await fetch(`${API_BASE_URL}/start-game`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: 'solo' })
+                    body: JSON.stringify({ mode: sessionMode === 'endless' ? 'endless' : 'solo' })
                 });
                 const data = await response.json();
                 activeRunId = data.run_id;
@@ -160,9 +169,14 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 throw new Error('Missing run id while starting game session.');
             }
 
+            // The scene may have unmounted while we awaited the run id; the
+            // cleanup disposed this instance, so don't attach it to the DOM.
+            if (gameInstance.isDisposed) {
+                return;
+            }
+
             gameInstance.setup(activeRunId, gameContainerRef.current);
             setRunId(activeRunId);
-            gameRef.current = gameInstance;
 
             if (!isCoopSession) {
                 return;
@@ -292,7 +306,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                     </div>
 
                     <div className="sidebar-section">
-                        <div className="sidebar-title">Level</div>
+                        <div className="sidebar-title">{sessionMode === 'endless' ? 'Wave' : 'Level'}</div>
                         <div className="sidebar-value">{gameStats.currentLevel}</div>
                     </div>
 
@@ -315,6 +329,9 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
 
                     <div className="sidebar-section">
                         <div className="sidebar-buttons">
+                            <button className="sidebar-button" onClick={() => setIsMuted(soundManager.toggleMuted())}>
+                                {isMuted ? '\u{1F507} Sound Off' : '\u{1F50A} Sound On'}
+                            </button>
                             {!isCoopGuest && (
                                 <button className="sidebar-button danger" onClick={handleFinishRun}>
                                     Finish Run

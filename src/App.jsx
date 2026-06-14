@@ -539,7 +539,7 @@ const GridTanks = () => {
                 </div>
 
                 <div className="changelog-link" onClick={switchToChangelog}>
-                    {'v1.2.0 \u2022 View Changelog \u2192'}
+                    {'v1.3.0 \u2022 View Changelog \u2192'}
                 </div>
             </div>
 

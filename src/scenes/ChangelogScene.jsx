@@ -3,6 +3,16 @@ import '../App.css';
 const ChangelogScene = ({ switchToMenu }) => {
     const changelogEntries = [
         {
+            version: "1.3.0",
+            date: "June 14, 2026",
+            changes: [
+                "Added Endless mode: survive escalating, procedurally generated waves on a single life, with its own leaderboard",
+                "Added sound effects (with a mute toggle), explosions, screen shake, and level transition banners",
+                "Co-op lobby: invite links, one-click room code copy, and host can now remove a player",
+                "Leaderboard: top-3 medals and expandable per-player run history"
+            ]
+        },
+        {
             version: "1.2.0",
             date: "February 22, 2026",
             changes: [

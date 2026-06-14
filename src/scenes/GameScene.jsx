@@ -55,13 +55,14 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
     const isCoopSession = Boolean(
-        sessionMode === 'coop'
+        sessionMode.includes('coop')
         && coopSession
         && coopSession.roomCode
         && coopSession.roomToken
         && coopSession.role
         && coopSession.runId
     );
+    const isEndlessSession = sessionMode.includes('endless');
     const isCoopHost = isCoopSession && coopSession.role === 'host';
     const isCoopGuest = isCoopSession && coopSession.role === 'guest';
 
@@ -136,7 +137,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             }
 
             const gameInstance = new Game({
-                sessionMode: isCoopSession ? 'coop' : (sessionMode === 'endless' ? 'endless' : 'solo'),
+                sessionMode,
                 coopRole: isCoopSession ? coopSession.role : 'host'
             });
 
@@ -148,7 +149,20 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             gameRef.current = gameInstance;
 
             gameInstance.setGameStatsUpdater(setGameStats);
-            gameInstance.setScoreSubmissionSwitcher(switchToScoreSubmission);
+            // When the run ends on its own (e.g. both co-op players die in
+            // endless), the host must tell the guest to leave before it
+            // navigates to the score screen.
+            gameInstance.setScoreSubmissionSwitcher((endedRunId, endedMode) => {
+                const roomSocket = roomSocketRef.current;
+                if (isCoopHost && roomSocket && roomSocket.readyState === WebSocket.OPEN) {
+                    try {
+                        roomSocket.send(JSON.stringify({ type: 'finish_run' }));
+                    } catch {
+                        // Ignore send failures during teardown.
+                    }
+                }
+                switchToScoreSubmission(endedRunId, endedMode);
+            });
             gameInstance.setPerformanceWarningCallback(() => setShowPerformanceWarning(true));
 
             let activeRunId = null;
@@ -309,7 +323,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                     </div>
 
                     <div className="sidebar-section">
-                        <div className="sidebar-title">{sessionMode === 'endless' ? 'Wave' : 'Level'}</div>
+                        <div className="sidebar-title">{isEndlessSession ? 'Wave' : 'Level'}</div>
                         <div className="sidebar-value">{gameStats.currentLevel}</div>
                     </div>
 

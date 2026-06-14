@@ -21,8 +21,9 @@ const SCENES = {
     CHANGELOG: 'changelog'
 };
 
-const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
+const normalizeMode = (mode) => (['coop', 'endless', 'coop_endless'].includes(mode) ? mode : 'solo');
 const normalizePlayType = (playType) => (playType === 'endless' ? 'endless' : 'campaign');
+const coopModeForPlayType = (playType) => (playType === 'endless' ? 'coop_endless' : 'coop');
 
 const toWebSocketBaseUrl = (httpBaseUrl) => {
     if (!httpBaseUrl) {
@@ -211,8 +212,12 @@ const GridTanks = () => {
                         return;
                     }
 
+                    // The room's run mode is authoritative — this is how the
+                    // guest learns whether it's a campaign or endless co-op game.
+                    const startedMode = parsed.room?.mode === 'coop_endless' ? 'coop_endless' : 'coop';
+
                     setCoopRunId(sharedRunId);
-                    setSelectedMode('coop');
+                    setSelectedMode(startedMode);
                     setCurrentScene(SCENES.GAME);
                 }
             }
@@ -290,16 +295,12 @@ const GridTanks = () => {
     };
 
     const switchToSelectedCoopRoomSelect = () => {
-        if (selectedPlayType === 'endless') {
-            return;
-        }
-
         switchToCoopRoomSelect();
     };
 
     const switchToCoopRoomSelect = () => {
         closeRoomSocket();
-        setSelectedMode('coop');
+        setSelectedMode(coopModeForPlayType(selectedPlayType));
         setRoomActionLoading(false);
         setRoomInfo(null);
         setLobbyState(null);
@@ -449,7 +450,7 @@ const GridTanks = () => {
                 const response = await fetch(`${API_BASE_URL}/start-game`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: 'coop' })
+                    body: JSON.stringify({ mode: coopModeForPlayType(selectedPlayType) })
                 });
                 if (!response.ok) {
                     const apiError = await parseErrorMessage(response, 'Failed to start co-op run.');
@@ -612,11 +613,10 @@ const GridTanks = () => {
                         <button
                             className="flow-option-card"
                             onClick={switchToSelectedCoopRoomSelect}
-                            disabled={isEndless}
                         >
                             <span className="flow-option-title">Co-op</span>
                             <span className="flow-option-text">
-                                {isEndless ? 'Not available yet.' : 'Play the campaign with one friend online.'}
+                                {isEndless ? 'Survive endless waves with one friend online.' : 'Play the campaign with one friend online.'}
                             </span>
                         </button>
                     </div>
@@ -635,7 +635,7 @@ const GridTanks = () => {
 
             <div className="main-container flow-main">
                 <div className="logo-container flow-logo">
-                    <h1 className="game-title flow-title">Campaign Co-op</h1>
+                    <h1 className="game-title flow-title">{selectedPlayType === 'endless' ? 'Endless Co-op' : 'Campaign Co-op'}</h1>
                     <p className="subtitle flow-subtitle">Create a room or join one with a code.</p>
                 </div>
 
@@ -653,7 +653,7 @@ const GridTanks = () => {
                 </div>
 
                 <button className="back-button flow-back-button" onClick={() => setCurrentScene(SCENES.PLAY_PARTY_SELECT)}>
-                    Back to Campaign
+                    {selectedPlayType === 'endless' ? 'Back to Endless' : 'Back to Campaign'}
                 </button>
             </div>
         </div>
@@ -890,7 +890,7 @@ const GridTanks = () => {
                     {isHost ? (
                         <div className="flow-action-row lobby-action-row">
                             <button className="menu-button flow-action-button" onClick={startCoopCampaign} disabled={!canHostStart}>
-                                <span>{coopStartLoading ? 'Starting...' : 'Start Co-op Campaign'}</span>
+                                <span>{coopStartLoading ? 'Starting...' : (selectedPlayType === 'endless' ? 'Start Co-op Endless' : 'Start Co-op Campaign')}</span>
                             </button>
                         </div>
                     ) : (
@@ -928,7 +928,7 @@ const GridTanks = () => {
                         switchToMenu={switchToMenu}
                         switchToScoreSubmission={switchToScoreSubmission}
                         sessionMode={selectedMode}
-                        coopSession={selectedMode === 'coop' ? {
+                        coopSession={selectedMode.includes('coop') ? {
                             roomCode: roomInfo?.code ?? '',
                             roomToken: roomInfo?.token ?? '',
                             role: roomInfo?.role ?? '',

@@ -1,6 +1,14 @@
 // ScoreSubmissionScene.jsx
 import { useState, useEffect } from 'react';
 
+const isEndlessMode = (mode) => mode === 'endless' || mode === 'coop_endless';
+const MODE_LABELS = {
+    solo: 'Solo Run',
+    coop: 'Co-op Run',
+    endless: 'Endless Run',
+    coop_endless: 'Co-op Endless Run'
+};
+
 function ScoreSubmissionScene({ runId, sessionMode = 'solo', switchToMenu, switchToLeaderboard }) {
     const [formData, setFormData] = useState({
         username: '',
@@ -91,14 +99,14 @@ function ScoreSubmissionScene({ runId, sessionMode = 'solo', switchToMenu, switc
                 <div className="score-summary">
                     <div className="score-title">Your Final Score</div>
                     <div className="score-mode-label">
-                        {sessionMode === 'coop' ? 'Co-op Run' : (sessionMode === 'endless' ? 'Endless Run' : 'Solo Run')}
+                        {MODE_LABELS[sessionMode] || 'Solo Run'}
                     </div>
                     <div className="score-stats">
                         <div className="stat">
                             <div className="stat-value">
-                                {sessionMode === 'endless' ? `Wave ${serverStats.stages_completed}` : `Level ${serverStats.stages_completed}`}
+                                {isEndlessMode(sessionMode) ? `Wave ${serverStats.stages_completed}` : `Level ${serverStats.stages_completed}`}
                             </div>
-                            <div className="stat-label">{sessionMode === 'endless' ? 'Waves Survived' : 'Stages Completed'}</div>
+                            <div className="stat-label">{isEndlessMode(sessionMode) ? 'Waves Survived' : 'Stages Completed'}</div>
                         </div>
                         <div className="stat">
                             <div className="stat-value">{serverStats.time}</div>

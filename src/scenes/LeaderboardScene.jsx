@@ -1,7 +1,9 @@
 import { Fragment, useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
+const normalizeMode = (mode) => (['coop', 'endless', 'coop_endless'].includes(mode) ? mode : 'solo');
+const isEndlessMode = (mode) => mode === 'endless' || mode === 'coop_endless';
+const MODE_LABELS = { solo: 'solo', coop: 'co-op', endless: 'endless', coop_endless: 'co-op endless' };
 
 const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     const [leaderboardData, setLeaderboardData] = useState([]);
@@ -121,6 +123,13 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                     >
                         Endless
                     </button>
+                    <button
+                        className={`leaderboard-mode-button ${leaderboardMode === 'coop_endless' ? 'active' : ''}`}
+                        onClick={() => handleModeChange('coop_endless')}
+                        disabled={loading}
+                    >
+                        Co-op Endless
+                    </button>
                 </div>
 
                 {/* Skeleton Loading State */}
@@ -130,7 +139,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>{leaderboardMode === 'endless' ? 'Waves Survived' : 'Stage Reached'}</div>
+                                <div>{isEndlessMode(leaderboardMode) ? 'Waves Survived' : 'Stage Reached'}</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>
@@ -181,7 +190,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                             <div className="leaderboard-header">
                                 <div>Rank</div>
                                 <div>Username</div>
-                                <div>{leaderboardMode === 'endless' ? 'Waves Survived' : 'Stages Completed'}</div>
+                                <div>{isEndlessMode(leaderboardMode) ? 'Waves Survived' : 'Stages Completed'}</div>
                                 <div>Time</div>
                                 <div>Date Submitted</div>
                             </div>
@@ -224,7 +233,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                                                     <div className="leaderboard-detail-title">Other runs</div>
                                                     <div className="leaderboard-detail-row leaderboard-detail-header">
                                                         <div>#</div>
-                                                        <div>{leaderboardMode === 'endless' ? 'Waves' : 'Stages'}</div>
+                                                        <div>{isEndlessMode(leaderboardMode) ? 'Waves' : 'Stages'}</div>
                                                         <div>Time</div>
                                                         <div>Date</div>
                                                     </div>
@@ -246,7 +255,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                                 })
                             ) : (
                                 <div className="no-data">
-                                    <p>No {leaderboardMode === 'coop' ? 'co-op' : leaderboardMode} leaderboard entries found.</p>
+                                    <p>No {MODE_LABELS[leaderboardMode] || leaderboardMode} leaderboard entries found.</p>
                                 </div>
                             )}
                         </div>

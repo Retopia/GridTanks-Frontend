@@ -103,10 +103,12 @@ export class Game {
 
         this.sessionMode = options.sessionMode || 'solo';
         this.coopRole = options.coopRole || 'host';
-        this.isCoop = this.sessionMode === 'coop';
+        // Party (co-op) and content (endless) are independent axes, so the
+        // composite "coop_endless" mode must light up both flags.
+        this.isCoop = this.sessionMode.includes('coop');
         this.isCoopHost = this.isCoop && this.coopRole === 'host';
         this.isCoopGuest = this.isCoop && this.coopRole === 'guest';
-        this.isEndless = this.sessionMode === 'endless';
+        this.isEndless = this.sessionMode.includes('endless');
 
         this.currentLevel = 1;
 

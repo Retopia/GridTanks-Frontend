@@ -168,9 +168,16 @@ export class Game {
         this.updateGameStats = null;
         this.switchToScoreSubmission = null;
         this.gameStartTime = null;
+        this.pausedDurationMs = 0;
 
         this.container = null;
         this.hasShownPerformanceWarning = false;
+        this.gameLoopHandler = null;
+        this.pointerMoveHandler = null;
+        this.pointerDownHandler = null;
+        this.pointerUpHandler = null;
+        this.pointerUpOutsideHandler = null;
+        this.contextMenuHandler = null;
 
         // Visual feedback state: explosion particles, level banners, screen
         // shake, and the freeze-frame transition between levels.
@@ -578,7 +585,7 @@ export class Game {
 
     // Freeze gameplay briefly with a banner, then run `action` (defaults to
     // reloading the current level). Mirrors the Wii Tanks mission beat.
-    startLevelTransition(kind, action = null) {
+    startLevelTransition(kind, action = null, pauseMs = null) {
         if (this.transition) {
             return;
         }
@@ -596,8 +603,14 @@ export class Game {
         }
         this.showBanner(bannerText, 9999);
 
+        const defaultFrames = cleared ? 80 : 70;
+        const framesLeft = typeof pauseMs === 'number' && pauseMs > 0
+            ? Math.max(1, Math.round((pauseMs / 1000) * 60))
+            : defaultFrames;
+
         this.transition = {
-            framesLeft: cleared ? 80 : 70,
+            framesLeft,
+            startedAt: Date.now(),
             action: action || (async () => {
                 await this.loadLevel();
                 this.emitCoopSnapshotIfNeeded();
@@ -801,19 +814,22 @@ export class Game {
 
         this.app.ticker.speed = 1.0;
         this.app.ticker.maxFPS = 0;
-        this.app.ticker.add((delta) => this.gameLoop(delta));
+        this.gameLoopHandler = (delta) => this.gameLoop(delta);
+        this.app.ticker.add(this.gameLoopHandler);
 
-        this.app.renderer.plugins.interaction.on('pointermove', (e) => {
+        this.pointerMoveHandler = (e) => {
             const newPosition = e.data.global;
             this.mouseX = newPosition.x;
             this.mouseY = newPosition.y;
-        });
+        };
+        this.app.renderer.plugins.interaction.on('pointermove', this.pointerMoveHandler);
 
-        this.app.renderer.view.addEventListener('contextmenu', (e) => {
+        this.contextMenuHandler = (e) => {
             e.preventDefault();
-        });
+        };
+        this.app.renderer.view.addEventListener('contextmenu', this.contextMenuHandler);
 
-        this.app.renderer.plugins.interaction.on('pointerdown', (e) => {
+        this.pointerDownHandler = (e) => {
             const controllablePlayer = this.localPlayer;
             if (e.data.button === 0 && controllablePlayer instanceof Player) {
                 controllablePlayer.setMouseDown(true);
@@ -823,21 +839,24 @@ export class Game {
                     this.addBulletToWorld(bullet);
                 }
             }
-        });
+        };
+        this.app.renderer.plugins.interaction.on('pointerdown', this.pointerDownHandler);
 
-        this.app.renderer.plugins.interaction.on('pointerup', (e) => {
+        this.pointerUpHandler = (e) => {
             const controllablePlayer = this.localPlayer;
             if (e.data.button === 0 && controllablePlayer instanceof Player) {
                 controllablePlayer.setMouseDown(false);
             }
-        });
+        };
+        this.app.renderer.plugins.interaction.on('pointerup', this.pointerUpHandler);
 
-        this.app.renderer.plugins.interaction.on('pointerupoutside', (e) => {
+        this.pointerUpOutsideHandler = (e) => {
             const controllablePlayer = this.localPlayer;
             if (e.data.button === 0 && controllablePlayer instanceof Player) {
                 controllablePlayer.setMouseDown(false);
             }
-        });
+        };
+        this.app.renderer.plugins.interaction.on('pointerupoutside', this.pointerUpOutsideHandler);
     }
 
     showPerformanceWarning() {
@@ -1390,6 +1409,7 @@ export class Game {
             return;
         }
 
+        this.cleanupTankResources();
         this.allBullets = [];
         this.tanks = [];
         this.teamA = [];
@@ -1405,6 +1425,14 @@ export class Game {
         this.shakeFrames = 0;
         this.app.stage.position.set(0, 0);
         this.app.stage.removeChildren();
+    }
+
+    cleanupTankResources() {
+        for (const tank of this.tanks) {
+            if (typeof tank?.cleanup === 'function') {
+                tank.cleanup();
+            }
+        }
     }
 
     // Display an error message or something
@@ -1476,6 +1504,7 @@ export class Game {
                     this.switchToScoreSubmission(this.run_id, this.sessionMode);
                 };
 
+                const pauseMs = Number(data.pause_ms) || null;
                 if (this.transition) {
                     // A death ceremony is already holding the frame (endless
                     // run over) — finish the run when it ends instead of
@@ -1483,10 +1512,10 @@ export class Game {
                     this.transition.action = finishRun;
                 } else if (this.isEndless) {
                     // Endless game_complete only comes from dying.
-                    this.startLevelTransition('failed', finishRun);
+                    this.startLevelTransition('failed', finishRun, pauseMs);
                 } else {
                     // Campaign completed: celebrate the final level first.
-                    this.startLevelTransition('cleared', finishRun);
+                    this.startLevelTransition('cleared', finishRun, pauseMs);
                 }
                 return data;
             }
@@ -1508,7 +1537,7 @@ export class Game {
                         this.currentLevel = nextLevel;
                         await this.loadLevel();
                         this.emitCoopSnapshotIfNeeded();
-                    });
+                    }, Number(data.pause_ms) || null);
                 }
                 return data;
             }
@@ -1516,7 +1545,7 @@ export class Game {
             if (data.level_reset) {
                 // The game loop usually starts this transition the frame the
                 // player dies; this is a no-op in that case.
-                this.startLevelTransition('failed');
+                this.startLevelTransition('failed', null, Number(data.pause_ms) || null);
                 return data;
             }
 
@@ -1529,7 +1558,24 @@ export class Game {
 
     getGameTime() {
         if (!this.gameStartTime) return 0;
-        return Date.now() - this.gameStartTime;
+        return Math.max(0, Date.now() - this.gameStartTime - this.getPausedDurationMs());
+    }
+
+    getPausedDurationMs() {
+        const activeTransitionMs = this.transition?.startedAt
+            ? Date.now() - this.transition.startedAt
+            : 0;
+
+        return Math.max(0, Math.round(this.pausedDurationMs + activeTransitionMs));
+    }
+
+    completeTransitionPause() {
+        if (!this.transition?.startedAt) {
+            return;
+        }
+
+        this.pausedDurationMs += Date.now() - this.transition.startedAt;
+        this.transition.startedAt = null;
     }
 
     formatTime(milliseconds) {
@@ -1573,6 +1619,7 @@ export class Game {
             this.transition.framesLeft -= cappedDelta;
             if (this.transition.framesLeft <= 0) {
                 const action = this.transition.action;
+                this.completeTransitionPause();
                 this.transition = null;
                 action();
             }
@@ -1728,7 +1775,32 @@ export class Game {
             return;
         }
 
-        // TODO: Maybe implement removal of event listeners in the future, but it works as of now so maybe it's not needed
+        this.cleanupTankResources();
+
+        const interaction = this.app.renderer?.plugins?.interaction;
+        if (interaction) {
+            if (this.pointerMoveHandler) {
+                interaction.off('pointermove', this.pointerMoveHandler);
+            }
+            if (this.pointerDownHandler) {
+                interaction.off('pointerdown', this.pointerDownHandler);
+            }
+            if (this.pointerUpHandler) {
+                interaction.off('pointerup', this.pointerUpHandler);
+            }
+            if (this.pointerUpOutsideHandler) {
+                interaction.off('pointerupoutside', this.pointerUpOutsideHandler);
+            }
+        }
+
+        if (this.contextMenuHandler && this.app.renderer?.view) {
+            this.app.renderer.view.removeEventListener('contextmenu', this.contextMenuHandler);
+        }
+
+        if (this.gameLoopHandler) {
+            this.app.ticker.remove(this.gameLoopHandler);
+        }
+
         this.app.ticker.stop();
         this.app.stage.removeChildren();
 

@@ -284,6 +284,9 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
         return () => {
             cleanupGame();
         };
+        // The PIXI game owns its lifecycle after mount; re-running this effect
+        // would create a second renderer and duplicate sockets/input handlers.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (

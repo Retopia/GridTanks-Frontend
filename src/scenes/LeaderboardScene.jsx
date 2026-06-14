@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
@@ -11,6 +11,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     const [limit] = useState(10); // Show 10 entries per page
     const [hasMorePages, setHasMorePages] = useState(false);
     const [leaderboardMode, setLeaderboardMode] = useState(normalizeMode(initialMode));
+    const [expandedPlayerKeys, setExpandedPlayerKeys] = useState(new Set());
 
     useEffect(() => {
         const nextMode = normalizeMode(initialMode);
@@ -19,7 +20,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
     }, [initialMode]);
 
     // Fetch leaderboard data
-    const fetchLeaderboard = async (page = 1, mode = leaderboardMode) => {
+    const fetchLeaderboard = useCallback(async (page = 1, mode = leaderboardMode) => {
         try {
             setLoading(true);
             setError(null);
@@ -36,7 +37,7 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
             setLeaderboardData(data.entries);
 
             // Check if there are more pages by seeing if we got a full page
-            setHasMorePages(data.entries.length === limit);
+            setHasMorePages(Boolean(data.has_more ?? data.entries.length === limit));
 
         } catch (err) {
             console.error('Error fetching leaderboard:', err);
@@ -44,12 +45,12 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [leaderboardMode, limit]);
 
     // Fetch data on component mount and when page changes
     useEffect(() => {
         fetchLeaderboard(currentPage, leaderboardMode);
-    }, [currentPage, leaderboardMode]);
+    }, [currentPage, leaderboardMode, fetchLeaderboard]);
 
     // Handle pagination
     const goToNextPage = () => {
@@ -76,6 +77,22 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
         }
         setLeaderboardMode(normalizedMode);
         setCurrentPage(1);
+        setExpandedPlayerKeys(new Set());
+    };
+
+    const getPlayerKey = (entry) => (entry.username || '').trim().toLowerCase();
+
+    const togglePlayerEntries = (entry) => {
+        const playerKey = getPlayerKey(entry);
+        setExpandedPlayerKeys((previousKeys) => {
+            const nextKeys = new Set(previousKeys);
+            if (nextKeys.has(playerKey)) {
+                nextKeys.delete(playerKey);
+            } else {
+                nextKeys.add(playerKey);
+            }
+            return nextKeys;
+        });
     };
 
     return (
@@ -170,15 +187,59 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                             </div>
 
                             {leaderboardData.length > 0 ? (
-                                leaderboardData.map((entry, index) => (
-                                    <div key={`${entry.username}-${index}`} className="leaderboard-row">
-                                        <div>{((currentPage - 1) * limit) + index + 1}</div>
-                                        <div>{entry.username}</div>
-                                        <div>{entry.completed_levels}</div>
-                                        <div>{entry.time}</div>
-                                        <div>{entry.date_submitted}</div>
-                                    </div>
-                                ))
+                                leaderboardData.map((entry, index) => {
+                                    const playerKey = getPlayerKey(entry);
+                                    const playerEntries = Array.isArray(entry.entries) ? entry.entries : [];
+                                    const otherEntries = playerEntries.slice(1);
+                                    const isExpanded = expandedPlayerKeys.has(playerKey);
+                                    const canExpand = otherEntries.length > 0;
+
+                                    return (
+                                        <Fragment key={`${playerKey}-${index}`}>
+                                            <div
+                                                className={`leaderboard-row ${canExpand ? 'expandable' : ''} ${isExpanded ? 'expanded' : ''}`}
+                                                onClick={canExpand ? () => togglePlayerEntries(entry) : undefined}
+                                            >
+                                                <div>{((currentPage - 1) * limit) + index + 1}</div>
+                                                <div className="leaderboard-username-cell">
+                                                    <span>{entry.username}</span>
+                                                    {canExpand && (
+                                                        <span className="leaderboard-run-count">
+                                                            {entry.entry_count} runs
+                                                            <span className="leaderboard-chevron">{isExpanded ? '▲' : '▼'}</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div>{entry.completed_levels}</div>
+                                                <div>{entry.time}</div>
+                                                <div>{entry.date_submitted}</div>
+                                            </div>
+
+                                            {canExpand && isExpanded && (
+                                                <div className="leaderboard-entry-details">
+                                                    <div className="leaderboard-detail-title">Other runs</div>
+                                                    <div className="leaderboard-detail-row leaderboard-detail-header">
+                                                        <div>#</div>
+                                                        <div>{leaderboardMode === 'endless' ? 'Waves' : 'Stages'}</div>
+                                                        <div>Time</div>
+                                                        <div>Date</div>
+                                                    </div>
+                                                    {otherEntries.map((runEntry, runIndex) => (
+                                                        <div
+                                                            key={`${playerKey}-run-${runIndex}`}
+                                                            className="leaderboard-detail-row"
+                                                        >
+                                                    <div>{runIndex + 2}</div>
+                                                            <div>{runEntry.completed_levels}</div>
+                                                            <div>{runEntry.time}</div>
+                                                            <div>{runEntry.date_submitted}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })
                             ) : (
                                 <div className="no-data">
                                     <p>No {leaderboardMode === 'coop' ? 'co-op' : leaderboardMode} leaderboard entries found.</p>

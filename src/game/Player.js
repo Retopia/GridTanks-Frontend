@@ -30,6 +30,8 @@ export class Player {
 
         this.firedBullets = 0;
         this.maxBullets = 5;
+        this.boundOnKeyDown = this.onKeyDown.bind(this);
+        this.boundOnKeyUp = this.onKeyUp.bind(this);
 
         this.turret = PIXI.Sprite.from(PIXI.Texture.WHITE);
         this.turret.tint = 0x007ACC;
@@ -75,8 +77,17 @@ export class Player {
     }
 
     setupKeyboard() {
-        window.addEventListener('keydown', this.onKeyDown.bind(this));
-        window.addEventListener('keyup', this.onKeyUp.bind(this));
+        window.addEventListener('keydown', this.boundOnKeyDown);
+        window.addEventListener('keyup', this.boundOnKeyUp);
+    }
+
+    cleanup() {
+        if (!this.enableKeyboard) {
+            return;
+        }
+
+        window.removeEventListener('keydown', this.boundOnKeyDown);
+        window.removeEventListener('keyup', this.boundOnKeyUp);
     }
 
     onKeyDown(event) {

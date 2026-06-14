@@ -8,7 +8,8 @@ import ChangelogScene from './scenes/ChangelogScene';
 
 const SCENES = {
     MENU: 'menu',
-    MODE_SELECT: 'modeSelect',
+    PLAY_TYPE_SELECT: 'playTypeSelect',
+    PLAY_PARTY_SELECT: 'playPartySelect',
     COOP_ROOM_SELECT: 'coopRoomSelect',
     COOP_CREATE_ROOM: 'coopCreateRoom',
     COOP_JOIN_ROOM: 'coopJoinRoom',
@@ -21,6 +22,7 @@ const SCENES = {
 };
 
 const normalizeMode = (mode) => (['coop', 'endless'].includes(mode) ? mode : 'solo');
+const normalizePlayType = (playType) => (playType === 'endless' ? 'endless' : 'campaign');
 
 const toWebSocketBaseUrl = (httpBaseUrl) => {
     if (!httpBaseUrl) {
@@ -54,12 +56,13 @@ const parseErrorMessage = async (response, fallbackMessage) => {
 
 const GridTanks = () => {
     // Scene states:
-    // 'menu', 'modeSelect', 'coopRoomSelect', 'coopCreateRoom', 'coopJoinRoom',
+    // 'menu', 'playTypeSelect', 'playPartySelect', 'coopRoomSelect', 'coopCreateRoom', 'coopJoinRoom',
     // 'coopLobby', 'game', 'howto', 'leaderboard', 'scoreSubmission', 'changelog'
     const [currentScene, setCurrentScene] = useState(SCENES.MENU);
     const [runId, setRunId] = useState('');
     const [isMobile, setIsMobile] = useState(false);
     const [selectedMode, setSelectedMode] = useState('solo');
+    const [selectedPlayType, setSelectedPlayType] = useState('campaign');
     const [scoreSubmissionMode, setScoreSubmissionMode] = useState('solo');
     const [leaderboardMode, setLeaderboardMode] = useState('solo');
 
@@ -222,9 +225,14 @@ const GridTanks = () => {
     };
 
     // Scene switching functions
-    const switchToModeSelect = () => {
+    const switchToPlayTypeSelect = () => {
         console.log('Opening play options...');
-        setCurrentScene(SCENES.MODE_SELECT);
+        setCurrentScene(SCENES.PLAY_TYPE_SELECT);
+    };
+
+    const switchToPlayPartySelect = (playType) => {
+        setSelectedPlayType(normalizePlayType(playType));
+        setCurrentScene(SCENES.PLAY_PARTY_SELECT);
     };
 
     const switchToGame = () => {
@@ -232,14 +240,17 @@ const GridTanks = () => {
         setCurrentScene(SCENES.GAME);
     };
 
-    const switchToSoloGame = () => {
-        setSelectedMode('solo');
+    const switchToSelectedSoloGame = () => {
+        setSelectedMode(selectedPlayType === 'endless' ? 'endless' : 'solo');
         switchToGame();
     };
 
-    const switchToEndlessGame = () => {
-        setSelectedMode('endless');
-        switchToGame();
+    const switchToSelectedCoopRoomSelect = () => {
+        if (selectedPlayType === 'endless') {
+            return;
+        }
+
+        switchToCoopRoomSelect();
     };
 
     const switchToCoopRoomSelect = () => {
@@ -433,6 +444,7 @@ const GridTanks = () => {
         console.log('Returning to menu...');
         resetCoopFlow();
         setSelectedMode('solo');
+        setSelectedPlayType('campaign');
         setScoreSubmissionMode('solo');
         setCurrentScene(SCENES.MENU);
     };
@@ -464,7 +476,7 @@ const GridTanks = () => {
                 </div>
 
                 <div className="menu-buttons">
-                    <button className="menu-button" onClick={switchToModeSelect}>
+                    <button className="menu-button" onClick={switchToPlayTypeSelect}>
                         <span className="button-icon">{'\u25B6'}</span>
                         <span>Play</span>
                     </button>
@@ -500,26 +512,22 @@ const GridTanks = () => {
         </div>
     );
 
-    const PlayModeScene = () => (
+    const PlayTypeScene = () => (
         <div className="scene-container">
             <div className="grid-background"></div>
 
             <div className="main-container flow-main">
                 <div className="logo-container flow-logo">
-                    <h1 className="game-title flow-title">Choose Mode</h1>
-                    <p className="subtitle flow-subtitle">Pick how you want to play the campaign.</p>
+                    <h1 className="game-title flow-title">Choose Run</h1>
+                    <p className="subtitle flow-subtitle">Pick a campaign run or an endless survival run.</p>
                 </div>
 
                 <div className="flow-option-grid">
-                    <button className="flow-option-card" onClick={switchToSoloGame}>
-                        <span className="flow-option-title">Solo</span>
-                        <span className="flow-option-text">Start a single-player campaign.</span>
+                    <button className="flow-option-card" onClick={() => switchToPlayPartySelect('campaign')}>
+                        <span className="flow-option-title">Campaign</span>
+                        <span className="flow-option-text">Clear the handcrafted level set.</span>
                     </button>
-                    <button className="flow-option-card" onClick={switchToCoopRoomSelect}>
-                        <span className="flow-option-title">Co-op</span>
-                        <span className="flow-option-text">Play the campaign with one friend online.</span>
-                    </button>
-                    <button className="flow-option-card" onClick={switchToEndlessGame}>
+                    <button className="flow-option-card" onClick={() => switchToPlayPartySelect('endless')}>
                         <span className="flow-option-title">Endless</span>
                         <span className="flow-option-text">Survive escalating waves. One life!</span>
                     </button>
@@ -532,13 +540,54 @@ const GridTanks = () => {
         </div>
     );
 
+    const PlayPartyScene = () => {
+        const isEndless = selectedPlayType === 'endless';
+        const runLabel = isEndless ? 'Endless' : 'Campaign';
+
+        return (
+            <div className="scene-container">
+                <div className="grid-background"></div>
+
+                <div className="main-container flow-main">
+                    <div className="logo-container flow-logo">
+                        <h1 className="game-title flow-title">{runLabel}</h1>
+                        <p className="subtitle flow-subtitle">Choose solo or co-op.</p>
+                    </div>
+
+                    <div className="flow-option-grid">
+                        <button className="flow-option-card" onClick={switchToSelectedSoloGame}>
+                            <span className="flow-option-title">Solo</span>
+                            <span className="flow-option-text">
+                                {isEndless ? 'Survive wave after wave alone.' : 'Start a single-player campaign.'}
+                            </span>
+                        </button>
+                        <button
+                            className="flow-option-card"
+                            onClick={switchToSelectedCoopRoomSelect}
+                            disabled={isEndless}
+                        >
+                            <span className="flow-option-title">Co-op</span>
+                            <span className="flow-option-text">
+                                {isEndless ? 'Not available yet.' : 'Play the campaign with one friend online.'}
+                            </span>
+                        </button>
+                    </div>
+
+                    <button className="back-button flow-back-button" onClick={switchToPlayTypeSelect}>
+                        Back to Run Options
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     const CoopRoomSelectScene = () => (
         <div className="scene-container">
             <div className="grid-background"></div>
 
             <div className="main-container flow-main">
                 <div className="logo-container flow-logo">
-                    <h1 className="game-title flow-title">Co-op Rooms</h1>
+                    <h1 className="game-title flow-title">Campaign Co-op</h1>
                     <p className="subtitle flow-subtitle">Create a room or join one with a code.</p>
                 </div>
 
@@ -553,8 +602,8 @@ const GridTanks = () => {
                     </button>
                 </div>
 
-                <button className="back-button flow-back-button" onClick={() => setCurrentScene(SCENES.MODE_SELECT)}>
-                    Back to Play
+                <button className="back-button flow-back-button" onClick={() => setCurrentScene(SCENES.PLAY_PARTY_SELECT)}>
+                    Back to Campaign
                 </button>
             </div>
         </div>
@@ -782,8 +831,10 @@ const GridTanks = () => {
         switch (currentScene) {
             case SCENES.MENU:
                 return MainMenu();
-            case SCENES.MODE_SELECT:
-                return PlayModeScene();
+            case SCENES.PLAY_TYPE_SELECT:
+                return PlayTypeScene();
+            case SCENES.PLAY_PARTY_SELECT:
+                return PlayPartyScene();
             case SCENES.COOP_ROOM_SELECT:
                 return CoopRoomSelectScene();
             case SCENES.COOP_CREATE_ROOM:

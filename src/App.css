@@ -1015,8 +1015,85 @@
     line-height: 1.25;
 }
 
-.leaderboard-row:last-child {
-    border-bottom: none;
+.leaderboard-row.expandable {
+    align-items: center;
+    cursor: pointer;
+}
+
+.leaderboard-row.expandable:hover {
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.leaderboard-row.expanded {
+    border-bottom-color: transparent;
+}
+
+.leaderboard-username-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.leaderboard-username-cell span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.leaderboard-run-count {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 107, 53, 0.45);
+    background: rgba(255, 107, 53, 0.12);
+    color: #ffc4ad;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.leaderboard-chevron {
+    font-size: 8px;
+    line-height: 1;
+}
+
+.leaderboard-entry-details {
+    margin: 0 0 8px 0;
+    padding: 10px 12px 10px 72px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.025);
+    box-sizing: border-box;
+}
+
+.leaderboard-detail-title {
+    margin-bottom: 6px;
+    color: #FF6B35;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.leaderboard-detail-row {
+    display: grid;
+    grid-template-columns: 42px 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 5px 0;
+    color: #8793a6;
+    font-size: 12px;
+    line-height: 1.25;
+    text-align: left;
+}
+
+.leaderboard-detail-header {
+    color: #b8c2d2;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
 }
 
 /* Skeleton pagination controls */
@@ -1251,6 +1328,27 @@
         grid-template-columns: 34px 1fr 72px 64px 90px;
         gap: 6px;
         font-size: 11px;
+    }
+
+    .leaderboard-username-cell {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .leaderboard-run-count {
+        padding: 2px 5px;
+        font-size: 9px;
+    }
+
+    .leaderboard-entry-details {
+        margin-left: 0;
+        padding: 8px 8px 8px 42px;
+    }
+
+    .leaderboard-detail-row {
+        grid-template-columns: 24px 1fr 64px 90px;
+        gap: 6px;
+        font-size: 10px;
     }
 
     .leaderboard-table {

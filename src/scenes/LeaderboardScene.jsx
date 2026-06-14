@@ -193,14 +193,18 @@ const LeaderboardScene = ({ switchToMenu, initialMode = 'solo' }) => {
                                     const otherEntries = playerEntries.slice(1);
                                     const isExpanded = expandedPlayerKeys.has(playerKey);
                                     const canExpand = otherEntries.length > 0;
+                                    const rank = ((currentPage - 1) * limit) + index + 1;
+                                    const rankClass = rank <= 3 ? `rank-top rank-${rank}` : '';
 
                                     return (
                                         <Fragment key={`${playerKey}-${index}`}>
                                             <div
-                                                className={`leaderboard-row ${canExpand ? 'expandable' : ''} ${isExpanded ? 'expanded' : ''}`}
+                                                className={`leaderboard-row ${rankClass} ${canExpand ? 'expandable' : ''} ${isExpanded ? 'expanded' : ''}`}
                                                 onClick={canExpand ? () => togglePlayerEntries(entry) : undefined}
                                             >
-                                                <div>{((currentPage - 1) * limit) + index + 1}</div>
+                                                <div className="leaderboard-rank-cell">
+                                                    {rank <= 3 ? <span className="leaderboard-medal">{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span> : rank}
+                                                </div>
                                                 <div className="leaderboard-username-cell">
                                                     <span>{entry.username}</span>
                                                     {canExpand && (

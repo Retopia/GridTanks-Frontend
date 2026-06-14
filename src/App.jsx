@@ -78,6 +78,7 @@ const GridTanks = () => {
     const [lobbyState, setLobbyState] = useState(null);
     const [lobbyError, setLobbyError] = useState('');
     const [socketStatus, setSocketStatus] = useState('disconnected'); // disconnected, connecting, connected
+    const [copyFeedback, setCopyFeedback] = useState(''); // '', 'code', 'link'
 
     const websocketRef = useRef(null);
 
@@ -121,6 +122,29 @@ const GridTanks = () => {
         setIsMobile(checkMobile());
     }, []);
 
+    // Deep link: an invite URL like "?room=ABC123" opens the join screen with
+    // the code prefilled. The param is stripped afterward so a later refresh
+    // doesn't force players back into the join flow.
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const codeParam = params.get('room');
+        if (!codeParam) {
+            return;
+        }
+
+        const sanitized = codeParam.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+        if (sanitized.length === 6) {
+            setRoomCodeInput(sanitized);
+            setSelectedMode('coop');
+            setSelectedPlayType('campaign');
+            setCurrentScene(SCENES.COOP_JOIN_ROOM);
+        }
+
+        params.delete('room');
+        const remaining = params.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${remaining ? `?${remaining}` : ''}`);
+    }, []);
+
     const roomCode = roomInfo?.code ?? '';
     const roomToken = roomInfo?.token ?? '';
 
@@ -158,6 +182,16 @@ const GridTanks = () => {
 
             if (parsed.type === 'error') {
                 setLobbyError(parsed.message || 'Room error.');
+                return;
+            }
+
+            if (parsed.type === 'kicked') {
+                setRoomInfo(null);
+                setLobbyState(null);
+                setCoopRunId('');
+                setLobbyError('');
+                setRoomError('The host removed you from the room.');
+                setCurrentScene(SCENES.COOP_ROOM_SELECT);
                 return;
             }
 
@@ -221,6 +255,16 @@ const GridTanks = () => {
         } catch {
             setLobbyError('Failed to send room message.');
             return false;
+        }
+    };
+
+    const copyToClipboard = async (text, kind) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopyFeedback(kind);
+            setTimeout(() => setCopyFeedback(''), 1500);
+        } catch {
+            // Clipboard API may be unavailable (e.g. insecure context) — ignore.
         }
     };
 
@@ -385,6 +429,10 @@ const GridTanks = () => {
         });
     };
 
+    const kickGuest = () => {
+        sendRoomMessage({ type: 'kick_guest' });
+    };
+
     const startCoopCampaign = async () => {
         if (!API_BASE_URL) {
             setLobbyError('Multiplayer backend is not configured.');
@@ -506,7 +554,7 @@ const GridTanks = () => {
                 </div>
                 <div className="stat-item">
                     <span className="stat-number">{'\u221E'}</span>
-                    Lives
+                    Endless Waves
                 </div>
             </div>
         </div>
@@ -590,6 +638,8 @@ const GridTanks = () => {
                     <h1 className="game-title flow-title">Campaign Co-op</h1>
                     <p className="subtitle flow-subtitle">Create a room or join one with a code.</p>
                 </div>
+
+                {roomError && <p className="flow-error">{roomError}</p>}
 
                 <div className="flow-option-grid">
                     <button className="flow-option-card" onClick={switchToCreateRoom}>
@@ -749,6 +799,11 @@ const GridTanks = () => {
             ? 'Connected'
             : (socketStatus === 'connecting' ? 'Connecting...' : 'Disconnected');
 
+        const hasRealCode = Boolean(roomState.room_code && roomState.room_code !== '------');
+        const inviteLink = hasRealCode
+            ? `${window.location.origin}${window.location.pathname}?room=${roomState.room_code}`
+            : '';
+
         return (
             <div className="scene-container">
                 <div className="grid-background"></div>
@@ -760,12 +815,31 @@ const GridTanks = () => {
                     </div>
 
                     <div className="lobby-card">
-                        <div className="lobby-row">
+                        <div className="lobby-code-block">
                             <span className="lobby-label">Room Code</span>
-                            <span className="lobby-room-code">{roomState.room_code}</span>
+                            <div className="lobby-code-hero">
+                                <span className="lobby-room-code">{roomState.room_code}</span>
+                                {hasRealCode && (
+                                    <div className="lobby-code-actions">
+                                        <button
+                                            className="lobby-copy-button"
+                                            onClick={() => copyToClipboard(roomState.room_code, 'code')}
+                                        >
+                                            {copyFeedback === 'code' ? '✓ Copied' : 'Copy Code'}
+                                        </button>
+                                        <button
+                                            className="lobby-copy-button"
+                                            onClick={() => copyToClipboard(inviteLink, 'link')}
+                                        >
+                                            {copyFeedback === 'link' ? '✓ Copied' : 'Copy Invite Link'}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="lobby-share-hint">Send this code or invite link to a friend so they can join.</p>
                         </div>
                         <div className="lobby-row">
-                            <span className="lobby-label">Socket</span>
+                            <span className="lobby-label">Connection</span>
                             <span className="lobby-value">{connectionLabel}</span>
                         </div>
                         <div className="lobby-row lobby-player-grid">
@@ -796,6 +870,11 @@ const GridTanks = () => {
                                         {guestPlayer?.ready ? 'Ready' : 'Not Ready'}
                                     </span>
                                 </div>
+                                {isHost && guestPlayer && (
+                                    <button className="lobby-kick-button" onClick={kickGuest}>
+                                        Remove Player
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -818,7 +897,7 @@ const GridTanks = () => {
                         <p className="flow-note">Host will start the match once both players are ready.</p>
                     )}
 
-                    <button className="back-button flow-back-button" onClick={switchToCoopRoomSelect}>
+                    <button className="lobby-leave-button" onClick={switchToCoopRoomSelect}>
                         Leave Room
                     </button>
                 </div>

@@ -458,6 +458,108 @@
     letter-spacing: 0.16em;
 }
 
+/* Room code hero — the primary thing to share in the lobby */
+.lobby-code-block {
+    padding: 4px 0 14px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+}
+
+/* Always stack code above the action buttons so copy-confirmation text
+   changes never reflow the code onto the same row. */
+.lobby-code-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-top: 8px;
+}
+
+.lobby-code-hero .lobby-room-code {
+    font-size: 2rem;
+    letter-spacing: 0.22em;
+}
+
+.lobby-code-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.lobby-copy-button {
+    /* Fixed min-width keeps the button from resizing when the label swaps
+       to the shorter "Copied" confirmation. */
+    min-width: 144px;
+    padding: 8px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    color: #ffc4ad;
+    background: rgba(255, 107, 53, 0.14);
+    border: 1px solid rgba(255, 107, 53, 0.45);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.lobby-copy-button:hover {
+    color: #ffffff;
+    background: rgba(255, 107, 53, 0.28);
+    transform: translateY(-1px);
+}
+
+.lobby-share-hint {
+    margin: 12px 0 0 0;
+    color: #a0aec0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+/* Lobby leave action — secondary so it doesn't compete with Ready/Start */
+.lobby-leave-button {
+    display: block;
+    margin: 16px auto 0 auto;
+    padding: 10px 22px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #a0aec0;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lobby-leave-button:hover {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Host control to remove the guest from the room */
+.lobby-kick-button {
+    margin-top: 10px;
+    padding: 5px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #ff9b8f;
+    background: rgba(231, 76, 60, 0.14);
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lobby-kick-button:hover {
+    color: #ffffff;
+    background: rgba(231, 76, 60, 0.3);
+    border-color: #e74c3c;
+}
+
 .flow-back-button {
     margin-top: 20px;
 }
@@ -588,22 +690,6 @@
 .scene-text p {
     font-size: 1.1rem;
     margin-bottom: 15px;
-}
-
-.back-button {
-    padding: 12px 24px;
-    background: rgba(255, 107, 53, 0.2);
-    border: 1px solid #FF6B35;
-    border-radius: 8px;
-    color: #FF6B35;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    transition: all 0.3s ease;
-}
-
-.back-button:hover {
-    background: rgba(255, 107, 53, 0.3);
-    transform: translateY(-1px);
 }
 
 /* Game Scene */
@@ -1018,14 +1104,51 @@
 .leaderboard-row.expandable {
     align-items: center;
     cursor: pointer;
+    border-radius: 6px;
 }
 
 .leaderboard-row.expandable:hover {
-    background: rgba(255, 255, 255, 0.035);
+    background: rgba(255, 107, 53, 0.08);
+    box-shadow: inset 3px 0 0 #FF6B35;
 }
 
 .leaderboard-row.expanded {
     border-bottom-color: transparent;
+}
+
+/* Top-3 rank emphasis */
+.leaderboard-rank-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.leaderboard-medal {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.leaderboard-row.rank-top {
+    color: #e2e8f0;
+}
+
+.leaderboard-row.rank-1 {
+    background: linear-gradient(90deg, rgba(255, 196, 0, 0.12), transparent 70%);
+    box-shadow: inset 3px 0 0 #ffc400;
+}
+
+.leaderboard-row.rank-2 {
+    background: linear-gradient(90deg, rgba(203, 213, 225, 0.1), transparent 70%);
+    box-shadow: inset 3px 0 0 #cbd5e1;
+}
+
+.leaderboard-row.rank-3 {
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.12), transparent 70%);
+    box-shadow: inset 3px 0 0 #cd7f32;
+}
+
+.leaderboard-row.rank-top.expandable:hover {
+    box-shadow: inset 3px 0 0 #FF6B35;
 }
 
 .leaderboard-username-cell {
@@ -1169,22 +1292,6 @@
 
     100% {
         background-position: -200% 0;
-    }
-}
-
-/* Subtle pulse effect for skeleton rows */
-.skeleton-row {
-    opacity: 1;
-    animation: skeleton-pulse 2s ease-in-out infinite alternate;
-}
-
-@keyframes skeleton-pulse {
-    0% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0.7;
     }
 }
 

@@ -32,7 +32,10 @@ const areInputStatesEqual = (a, b) => {
     );
 };
 
-function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo', coopSession = null }) {
+function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo', coopSession = null, aiAlly = null, playerSelector = 'player', rlModelUrl = null }) {
+    // Admin test runs (AI teammate, or an AI type playing the run itself) are
+    // watch/test only — never submit their scores to the leaderboard.
+    const isAdminRun = Boolean(aiAlly || rlModelUrl || (playerSelector && playerSelector !== 'player'));
     const gameRef = useRef(null);
     const gameContainerRef = useRef(null);
     const hasInitialized = useRef(false);
@@ -42,6 +45,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
 
     const [showPerformanceWarning, setShowPerformanceWarning] = useState(false);
     const [isMuted, setIsMuted] = useState(soundManager.muted);
+    const [countdown, setCountdown] = useState(null);
     const [runId, setRunId] = useState(null);
     const [coopSocketStatus, setCoopSocketStatus] = useState('disconnected');
     const [gameStats, setGameStats] = useState({
@@ -115,7 +119,11 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
         }
 
         cleanupGame();
-        switchToScoreSubmission(runId, sessionMode);
+        if (isAdminRun) {
+            switchToMenu();
+        } else {
+            switchToScoreSubmission(runId, sessionMode);
+        }
     };
 
     const handleBackToMenu = () => {
@@ -138,7 +146,9 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
 
             const gameInstance = new Game({
                 sessionMode,
-                coopRole: isCoopSession ? coopSession.role : 'host'
+                coopRole: isCoopSession ? coopSession.role : 'host',
+                aiAlly: aiAlly || null,
+                playerSelector
             });
 
             // Register on the ref immediately (not after the awaits below) so
@@ -148,7 +158,15 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             // game loop on top of the real one.
             gameRef.current = gameInstance;
 
+            // Admin "Watch RL Agent": hand the player to a trained ONNX policy.
+            if (rlModelUrl) {
+                gameInstance.attachOnnxAgent(rlModelUrl).catch((err) => {
+                    console.error('Failed to load ONNX agent:', err);
+                });
+            }
+
             gameInstance.setGameStatsUpdater(setGameStats);
+            gameInstance.setCountdownUpdater(setCountdown);
             // When the run ends on its own (e.g. both co-op players die in
             // endless), the host must tell the guest to leave before it
             // navigates to the score screen.
@@ -161,7 +179,11 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                         // Ignore send failures during teardown.
                     }
                 }
-                switchToScoreSubmission(endedRunId, endedMode);
+                if (isAdminRun) {
+                    switchToMenu();
+                } else {
+                    switchToScoreSubmission(endedRunId, endedMode);
+                }
             });
             gameInstance.setPerformanceWarningCallback(() => setShowPerformanceWarning(true));
 
@@ -362,7 +384,21 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 </div>
 
                 {/* Game Canvas */}
-                <div ref={gameContainerRef} className="game-container" />
+                <div className="game-stage-wrap">
+                    <div ref={gameContainerRef} className="game-container" />
+                    {countdown != null && (
+                        <div className="countdown-overlay">
+                            <div className="countdown-stage-label">
+                                {isEndlessSession ? 'Wave' : 'Level'} {gameStats.currentLevel}
+                            </div>
+                            <div className="countdown-enemies-label">
+                                {gameStats.totalEnemies} {gameStats.totalEnemies === 1 ? 'Enemy' : 'Enemies'}
+                            </div>
+                            <div className="countdown-number" key={countdown}>{countdown}</div>
+                            <div className="countdown-getready">Get Ready</div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

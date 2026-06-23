@@ -693,6 +693,12 @@
 }
 
 /* Game Scene */
+.game-stage-wrap {
+    position: relative;
+    width: 800px;
+    height: 600px;
+}
+
 .game-container {
     width: 800px;
     height: 600px;
@@ -700,6 +706,217 @@
     position: relative;
     border-radius: 8px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Start-of-level "Get Ready" countdown overlay */
+.countdown-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border-radius: 8px;
+    /* Light dim only — keep it see-through so players can read the board and
+       their spawn position during the countdown. */
+    background: rgba(10, 15, 22, 0.32);
+    z-index: 20;
+    pointer-events: none;
+    user-select: none;
+}
+
+.countdown-stage-label {
+    color: #FF6B35;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.countdown-enemies-label {
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.countdown-number {
+    color: #ffffff;
+    font-size: 7rem;
+    font-weight: 800;
+    line-height: 1;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.85), 0 6px 30px rgba(255, 107, 53, 0.45);
+    animation: countdownPop 1s ease-out;
+}
+
+.countdown-getready {
+    margin-top: 10px;
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+@keyframes countdownPop {
+    0% { transform: scale(0.55); opacity: 0; }
+    30% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .countdown-number { animation: none; }
+}
+
+/* Admin page */
+.admin-login {
+    max-width: 380px;
+}
+
+.admin-content {
+    width: 100%;
+    max-width: 760px;
+    padding: 0 16px;
+    text-align: center;
+}
+
+.admin-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+.admin-panel-title {
+    margin: 0 0 6px 0;
+    color: #FF6B35;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.admin-panel-note {
+    margin: 0 0 14px 0;
+    color: #a0aec0;
+    font-size: 0.85rem;
+}
+
+.admin-launch-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.admin-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.admin-field .flow-input {
+    width: auto;
+    min-width: 150px;
+}
+
+.admin-launch-button {
+    width: auto;
+    padding: 12px 28px;
+}
+
+.admin-records-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.admin-table-block {
+    margin-bottom: 14px;
+}
+
+.admin-table-title {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+}
+
+.admin-table-count {
+    color: #718096;
+    font-weight: 600;
+}
+
+.admin-empty {
+    color: #718096;
+    font-size: 0.82rem;
+    padding: 4px 0;
+}
+
+.admin-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.admin-row {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.82rem;
+    color: #cbd5e1;
+}
+
+.admin-row-name {
+    font-weight: 700;
+    color: #ffffff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-row-detail {
+    color: #a0aec0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-row-date {
+    color: #718096;
+    font-size: 0.76rem;
+}
+
+.admin-delete-button {
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    background: rgba(231, 76, 60, 0.14);
+    color: #ff9b8f;
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.admin-delete-button:hover {
+    color: #ffffff;
+    background: rgba(231, 76, 60, 0.32);
+    border-color: #e74c3c;
 }
 
 /* Make the PIXI canvas transparent so the gradient shows through */

@@ -3,8 +3,18 @@ import { Player } from "./Player.js"
 import { Cell } from "./Cell.js"
 import { Tank } from './Tank.js';
 import { soundManager } from './SoundManager.js';
+import { rand } from './gameRandom.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+// "Get Ready" countdown shown at the start of every level. Must match the
+// backend's COUNTDOWN_PAUSE_MS so the excluded time agrees on both sides.
+const COUNTDOWN_MS = 3000;
+
+// Co-op player colors (role-based: host is always blue, guest always red, on
+// both screens). Kept high-contrast so teammates are easy to tell apart.
+const COOP_HOST_COLOR = 0x2D7DFF;  // P1 / host — blue
+const COOP_GUEST_COLOR = 0xFF3B30; // P2 / guest — red
 
 const TANK_PRESETS = {
     BROWN: {
@@ -17,7 +27,7 @@ const TANK_PRESETS = {
         speed: 0,
         bulletType: "normal",
         maxBullets: 1,
-        shotDelayFunction: () => Math.random() * (100 - 80) + 80,
+        shotDelayFunction: () => rand() * (100 - 80) + 80,
         reflectedShotThreshold: 0.6,
         predictiveDodgeDistanceThreshold: 0,
     },
@@ -31,7 +41,7 @@ const TANK_PRESETS = {
         speed: 1.25,
         bulletType: "normal",
         maxBullets: 2,
-        shotDelayFunction: () => Math.random() * (100 - 80) + 80,
+        shotDelayFunction: () => rand() * (100 - 80) + 80,
         reflectedShotThreshold: 0.6,
         predictiveDodgeDistanceThreshold: 120,
     },
@@ -45,7 +55,7 @@ const TANK_PRESETS = {
         speed: 1.5,
         bulletType: "fire",
         maxBullets: 1,
-        shotDelayFunction: () => Math.random() * (100 - 60) + 60,
+        shotDelayFunction: () => rand() * (100 - 60) + 60,
         reflectedShotThreshold: 0,
         predictiveDodgeDistanceThreshold: 80,
     },
@@ -59,7 +69,7 @@ const TANK_PRESETS = {
         speed: 1.75,
         bulletType: "normal",
         maxBullets: 5,
-        shotDelayFunction: () => Math.random() * (50 - 20) + 20,
+        shotDelayFunction: () => rand() * (50 - 20) + 20,
         reflectedShotThreshold: 0.5,
         predictiveDodgeDistanceThreshold: 70,
     },
@@ -73,7 +83,7 @@ const TANK_PRESETS = {
         speed: 2,
         bulletType: "fire",
         maxBullets: 5,
-        shotDelayFunction: () => Math.random() * (60 - 30) + 30,
+        shotDelayFunction: () => rand() * (60 - 30) + 30,
         reflectedShotThreshold: 0,
         predictiveDodgeDistanceThreshold: 80,
     },
@@ -87,7 +97,7 @@ const TANK_PRESETS = {
         speed: 2,
         bulletType: "both",
         maxBullets: 5,
-        shotDelayFunction: () => Math.random() * (45 - 25) + 25,
+        shotDelayFunction: () => rand() * (45 - 25) + 25,
         reflectedShotThreshold: 0.5,
         predictiveDodgeDistanceThreshold: 80,
     },
@@ -109,6 +119,8 @@ export class Game {
         this.isCoopHost = this.isCoop && this.coopRole === 'host';
         this.isCoopGuest = this.isCoop && this.coopRole === 'guest';
         this.isEndless = this.sessionMode.includes('endless');
+        // Admin-only: { tankType } for a local AI-controlled ally tank.
+        this.aiAlly = options.aiAlly || null;
 
         this.currentLevel = 1;
 
@@ -127,6 +139,7 @@ export class Game {
         this.playerTwo = null;
         this.localPlayer = this.player;
         this.remotePlayer = null;
+        this.onnxAgent = null;
         this.remoteInputState = {
             keys: {},
             mouseX: 0,
@@ -159,7 +172,9 @@ export class Game {
         this.totalEnemies = 0;
 
         this.isPlayerPlayable = true;
-        this.playerSelectorValue = 'player';
+        // 'player' (human) or an AI tank type ('brown'/'grey'/'green'/'pink'/
+        // 'black'/'red') that plays the run itself. Set via the admin page.
+        this.playerSelectorValue = options.playerSelector || 'player';
 
         this.lastFrameTime = performance.now();
         this.frameCount = 0;
@@ -186,6 +201,8 @@ export class Game {
         this.effects = [];
         this.banner = null;
         this.transition = null;
+        this.countdown = null;
+        this.updateCountdown = null;
         this.shakeFrames = 0;
         this.shakeTotalFrames = 0;
         this.shakeMagnitude = 0;
@@ -195,12 +212,46 @@ export class Game {
         this.updateGameStats = updateFunction;
     }
 
+    setCountdownUpdater(updateFunction) {
+        this.updateCountdown = updateFunction;
+    }
+
+    // Freeze the sim for COUNTDOWN_MS at the start of a level while a
+    // "Get Ready" overlay counts down. Excluded from the timer (see
+    // getPausedDurationMs). Guests mirror the host's countdown via snapshots.
+    startCountdown() {
+        if (this.isCoopGuest) {
+            return;
+        }
+
+        const now = Date.now();
+        this.countdown = {
+            startedAt: now,
+            endsAt: now + COUNTDOWN_MS,
+            lastSecond: Math.ceil(COUNTDOWN_MS / 1000)
+        };
+        soundManager.levelStart();
+        this.updateUI();
+        if (this.updateCountdown) {
+            this.updateCountdown(this.countdown.lastSecond);
+        }
+    }
+
     setScoreSubmissionSwitcher(switcherFunction) {
         this.switchToScoreSubmission = switcherFunction
     }
 
     setCoopSnapshotEmitter(emitter) {
         this.onCoopSnapshot = emitter;
+    }
+
+    // Hand the local player over to a trained ONNX policy (admin "Watch RL
+    // Agent"). modelUrl points at a .onnx exported by agent/export_onnx.py.
+    async attachOnnxAgent(modelUrl) {
+        const { OnnxAgent } = await import('./OnnxAgent.js');
+        const agent = new OnnxAgent();
+        await agent.load(modelUrl);
+        this.onnxAgent = agent;
     }
 
     setRemoteInput(inputState) {
@@ -293,7 +344,8 @@ export class Game {
                 timer: this.formatTime(this.getGameTime()),
                 enemiesLeft: this.teamB.length,
                 totalEnemies: this.totalEnemies,
-                fps: this.fps || 0
+                fps: this.fps || 0,
+                countdown: this.countdown ? this.countdown.lastSecond : null
             };
         }
 
@@ -311,7 +363,9 @@ export class Game {
         }
 
         this.lastSnapshotAt = now;
-        const includeUi = (now - this.lastUiSnapshotAt) >= this.uiSnapshotIntervalMs;
+        // Always include UI while counting down so the guest's overlay tracks
+        // the host's numbers promptly.
+        const includeUi = this.countdown !== null || (now - this.lastUiSnapshotAt) >= this.uiSnapshotIntervalMs;
         if (includeUi) {
             this.lastUiSnapshotAt = now;
         }
@@ -364,6 +418,10 @@ export class Game {
                 totalEnemies: snapshot.ui.totalEnemies ?? this.totalEnemies,
                 fps: snapshot.ui.fps ?? this.fps
             });
+
+            if (this.updateCountdown) {
+                this.updateCountdown(snapshot.ui.countdown ?? null);
+            }
         }
 
         const incomingTankMap = new Map();
@@ -832,6 +890,10 @@ export class Game {
         this.app.renderer.view.addEventListener('contextmenu', this.contextMenuHandler);
 
         this.pointerDownHandler = (e) => {
+            // Ignore clicks during the start-of-level countdown.
+            if (this.countdown) {
+                return;
+            }
             const controllablePlayer = this.localPlayer;
             if (e.data.button === 0 && controllablePlayer instanceof Player) {
                 controllablePlayer.setMouseDown(true);
@@ -1115,7 +1177,7 @@ export class Game {
         ];
 
         for (let i = candidateOffsets.length - 1; i > 0; i--) {
-            const swapIndex = Math.floor(Math.random() * (i + 1));
+            const swapIndex = Math.floor(rand() * (i + 1));
             const temp = candidateOffsets[i];
             candidateOffsets[i] = candidateOffsets[swapIndex];
             candidateOffsets[swapIndex] = temp;
@@ -1246,15 +1308,15 @@ export class Game {
                     enableKeyboard: this.coopRole === 'host'
                 });
                 playerOne.networkId = 'p1';
-                playerOne.body.tint = 0x007ACC;
-                playerOne.turret.tint = 0x007ACC;
+                playerOne.body.tint = COOP_HOST_COLOR;
+                playerOne.turret.tint = COOP_HOST_COLOR;
 
                 const playerTwo = new Player(secondX, secondY, 18, 18, 2, {
                     enableKeyboard: this.coopRole === 'guest'
                 });
                 playerTwo.networkId = 'p2';
-                playerTwo.body.tint = 0x13A9A3;
-                playerTwo.turret.tint = 0x13A9A3;
+                playerTwo.body.tint = COOP_GUEST_COLOR;
+                playerTwo.turret.tint = COOP_GUEST_COLOR;
 
                 this.player = playerOne;
                 this.playerTwo = playerTwo;
@@ -1296,6 +1358,10 @@ export class Game {
                     case 'black':
                         newTank = this.createTank("BLACK", spawnX, spawnY)
                         break;
+
+                    case 'red':
+                        newTank = this.createTank("RED", spawnX, spawnY)
+                        break;
                 }
 
                 if (this.playerSelectorValue === 'player') {
@@ -1312,6 +1378,28 @@ export class Game {
                 this.teamA.push(this.player);
                 this.player.networkId = 'p1';
                 this.networkTankMap.set(this.player.networkId, this.player);
+
+                // Admin AI teammate: an enemy-type tank on the player's team,
+                // painted the teammate color, fighting alongside you.
+                if (this.aiAlly && TANK_PRESETS[this.aiAlly.tankType]) {
+                    const allySpawn = this.findCoopSpawnPosition(inputMap, playerSpawn.row, playerSpawn.col);
+                    const allyTank = this.createTank(
+                        this.aiAlly.tankType,
+                        allySpawn.col * this.cellWidth,
+                        allySpawn.row * this.cellHeight
+                    );
+                    allyTank.networkId = 'ally';
+                    allyTank.isAlly = true;
+                    allyTank.body.tint = COOP_GUEST_COLOR;
+                    if (allyTank.turret) {
+                        allyTank.turret.tint = COOP_GUEST_COLOR;
+                    }
+                    allyTank.setPathfinder(this.physicalMap);
+                    this.tanks.push(allyTank);
+                    this.app.stage.addChild(allyTank.body);
+                    this.teamA.push(allyTank);
+                    this.networkTankMap.set(allyTank.networkId, allyTank);
+                }
             }
         }
 
@@ -1332,10 +1420,9 @@ export class Game {
         this.totalEnemies = this.teamB.length
         this.refreshPlayerReferences();
 
-        const enemyLabel = this.totalEnemies === 1 ? 'Enemy' : 'Enemies';
-        const stageLabel = this.isEndless ? 'Wave' : 'Level';
-        this.showBanner(`${stageLabel} ${this.currentLevel}`, 130, `${this.totalEnemies} ${enemyLabel}`);
-        soundManager.levelStart();
+        // The level/enemy intro is now shown by the React "Get Ready" overlay
+        // that runs alongside the start-of-level countdown.
+        this.startCountdown();
 
         return true;
     }
@@ -1424,6 +1511,10 @@ export class Game {
         this.remotePlayer = null;
         this.effects = [];
         this.banner = null;
+        this.countdown = null;
+        if (this.updateCountdown) {
+            this.updateCountdown(null);
+        }
         this.shakeFrames = 0;
         this.app.stage.position.set(0, 0);
         this.app.stage.removeChildren();
@@ -1564,11 +1655,16 @@ export class Game {
     }
 
     getPausedDurationMs() {
-        const activeTransitionMs = this.transition?.startedAt
-            ? Date.now() - this.transition.startedAt
-            : 0;
+        const now = Date.now();
+        let active = 0;
+        if (this.transition?.startedAt) {
+            active += now - this.transition.startedAt;
+        }
+        if (this.countdown?.startedAt) {
+            active += now - this.countdown.startedAt;
+        }
 
-        return Math.max(0, Math.round(this.pausedDurationMs + activeTransitionMs));
+        return Math.max(0, Math.round(this.pausedDurationMs + active));
     }
 
     completeTransitionPause() {
@@ -1629,6 +1725,28 @@ export class Game {
             return;
         }
 
+        // "Get Ready" countdown: freeze the sim until it elapses.
+        if (this.countdown) {
+            const now = Date.now();
+            if (now >= this.countdown.endsAt) {
+                this.pausedDurationMs += now - this.countdown.startedAt;
+                this.countdown = null;
+                if (this.updateCountdown) {
+                    this.updateCountdown(null);
+                }
+            } else {
+                const secondsLeft = Math.max(1, Math.ceil((this.countdown.endsAt - now) / 1000));
+                if (secondsLeft !== this.countdown.lastSecond) {
+                    this.countdown.lastSecond = secondsLeft;
+                    if (this.updateCountdown) {
+                        this.updateCountdown(secondsLeft);
+                    }
+                }
+                this.emitCoopSnapshotIfNeeded();
+                return;
+            }
+        }
+
         if (this.teamA.length === 0) {
             this.startLevelTransition('failed');
             return;
@@ -1653,6 +1771,13 @@ export class Game {
                     tank.setMouseDown(this.remoteInputState.isMouseDown);
                     aimX = this.remoteInputState.mouseX;
                     aimY = this.remoteInputState.mouseY;
+                } else if (this.onnxAgent && tank === this.player) {
+                    // ONNX policy drives the local player (admin "Watch RL Agent").
+                    const act = this.onnxAgent.drive(this);
+                    tank.keyState = { ...act.keys };
+                    tank.setMouseDown(act.fire);
+                    aimX = act.aimX;
+                    aimY = act.aimY;
                 }
 
                 tank.update(cappedDelta, this.collisionLines, aimX, aimY, this.physicalMap);
@@ -1699,34 +1824,36 @@ export class Game {
                     this.networkTankMap.delete(collided.tank.networkId);
                 }
 
-                let removedFromTeam = false;
+                let removedFromTeamA = false;
+                let removedFromTeamB = false;
 
                 for (let t = this.teamA.length - 1; t >= 0; t--) {
                     if (this.teamA[t] === collided.tank) {
                         this.teamA.splice(t, 1);
-                        removedFromTeam = true;
+                        removedFromTeamA = true;
                     }
                 }
 
                 for (let t = this.teamB.length - 1; t >= 0; t--) {
                     if (this.teamB[t] === collided.tank) {
                         this.teamB.splice(t, 1);
-                        removedFromTeam = true;
+                        removedFromTeamB = true;
                     }
                 }
 
                 this.refreshPlayerReferences();
 
-                if (removedFromTeam) {
-                    const isPartialCoopPlayerDeath = (
-                        this.isCoopHost
-                        && this.isCoop
-                        && collided.tank.id === 3
-                        && this.teamA.length > 0
-                    );
-
-                    if (!isPartialCoopPlayerDeath) {
-                        this.sendGameEvent(collided.tank.id);
+                if (removedFromTeamB) {
+                    // Enemy eliminated.
+                    this.sendGameEvent(collided.tank.id);
+                } else if (removedFromTeamA) {
+                    // A friendly (player or AI ally) died. As long as any
+                    // teammate is still alive the level continues; only a full
+                    // team wipe is a player defeat (level reset / run over).
+                    // Reported as a player death (id 3) regardless of who fell
+                    // last, so the AI ally's type is never logged as an enemy.
+                    if (this.teamA.length === 0) {
+                        this.sendGameEvent(3);
                     }
                 }
 

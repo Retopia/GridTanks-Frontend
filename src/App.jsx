@@ -5,6 +5,7 @@ import ScoreSubmissionScene from './scenes/ScoreSubmissionScene';
 import LeaderboardScene from './scenes/LeaderboardScene';
 import HowToPlayScene from './scenes/HowToPlayScene';
 import ChangelogScene from './scenes/ChangelogScene';
+import AdminScene from './scenes/AdminScene';
 
 const SCENES = {
     MENU: 'menu',
@@ -18,7 +19,8 @@ const SCENES = {
     HOWTO: 'howto',
     LEADERBOARD: 'leaderboard',
     SCORE_SUBMISSION: 'scoreSubmission',
-    CHANGELOG: 'changelog'
+    CHANGELOG: 'changelog',
+    ADMIN: 'admin'
 };
 
 const normalizeMode = (mode) => (['coop', 'endless', 'coop_endless'].includes(mode) ? mode : 'solo');
@@ -64,6 +66,9 @@ const GridTanks = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [selectedMode, setSelectedMode] = useState('solo');
     const [selectedPlayType, setSelectedPlayType] = useState('campaign');
+    const [aiAlly, setAiAlly] = useState(null); // admin-only: { tankType } AI teammate
+    const [aiPlayerType, setAiPlayerType] = useState('player'); // admin-only: AI tank type that plays the run
+    const [rlModelUrl, setRlModelUrl] = useState(null); // admin-only: ONNX policy that drives the player
     const [scoreSubmissionMode, setScoreSubmissionMode] = useState('solo');
     const [leaderboardMode, setLeaderboardMode] = useState('solo');
 
@@ -123,25 +128,28 @@ const GridTanks = () => {
         setIsMobile(checkMobile());
     }, []);
 
-    // Deep link: an invite URL like "?room=ABC123" opens the join screen with
-    // the code prefilled. The param is stripped afterward so a later refresh
-    // doesn't force players back into the join flow.
+    // Deep links: "?room=ABC123" opens the join screen with the code prefilled;
+    // "?admin" opens the (hidden) admin page. Params are stripped afterward so a
+    // later refresh doesn't force players back into those flows.
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const codeParam = params.get('room');
-        if (!codeParam) {
-            return;
-        }
+        const adminParam = params.has('admin');
 
-        const sanitized = codeParam.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-        if (sanitized.length === 6) {
-            setRoomCodeInput(sanitized);
-            setSelectedMode('coop');
-            setSelectedPlayType('campaign');
-            setCurrentScene(SCENES.COOP_JOIN_ROOM);
+        if (codeParam) {
+            const sanitized = codeParam.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+            if (sanitized.length === 6) {
+                setRoomCodeInput(sanitized);
+                setSelectedMode('coop');
+                setSelectedPlayType('campaign');
+                setCurrentScene(SCENES.COOP_JOIN_ROOM);
+            }
+        } else if (adminParam) {
+            setCurrentScene(SCENES.ADMIN);
         }
 
         params.delete('room');
+        params.delete('admin');
         const remaining = params.toString();
         window.history.replaceState({}, '', `${window.location.pathname}${remaining ? `?${remaining}` : ''}`);
     }, []);
@@ -495,7 +503,44 @@ const GridTanks = () => {
         setSelectedMode('solo');
         setSelectedPlayType('campaign');
         setScoreSubmissionMode('solo');
+        setAiAlly(null);
+        setAiPlayerType('player');
+        setRlModelUrl(null);
         setCurrentScene(SCENES.MENU);
+    };
+
+    // Admin-only: launch a local run with an AI teammate tank.
+    const launchAiAlly = (playType, tankPreset) => {
+        const isEndless = playType === 'endless';
+        setAiPlayerType('player');
+        setAiAlly({ tankType: tankPreset });
+        setSelectedMode(isEndless ? 'endless' : 'solo');
+        setSelectedPlayType(isEndless ? 'endless' : 'campaign');
+        setCurrentScene(SCENES.GAME);
+    };
+
+    // Admin-only: launch a solo run where an AI tank type plays the whole run.
+    const launchAiPlayer = (playType, tankType) => {
+        const isEndless = playType === 'endless';
+        setAiAlly(null);
+        setAiPlayerType(tankType);
+        setRlModelUrl(null);
+        setSelectedMode(isEndless ? 'endless' : 'solo');
+        setSelectedPlayType(isEndless ? 'endless' : 'campaign');
+        setCurrentScene(SCENES.GAME);
+    };
+
+    // Admin-only: launch a solo run where a trained ONNX policy drives the
+    // player tank. playerSelector stays 'player' so the real Player exists;
+    // GameScene attaches the agent to it.
+    const launchRlAgent = (playType, modelUrl) => {
+        const isEndless = playType === 'endless';
+        setAiAlly(null);
+        setAiPlayerType('player');
+        setRlModelUrl(modelUrl);
+        setSelectedMode(isEndless ? 'endless' : 'solo');
+        setSelectedPlayType(isEndless ? 'endless' : 'campaign');
+        setCurrentScene(SCENES.GAME);
     };
 
     const switchToScoreSubmission = (newRunId, mode = selectedMode) => {
@@ -934,6 +979,9 @@ const GridTanks = () => {
                             role: roomInfo?.role ?? '',
                             runId: coopRunId
                         } : null}
+                        aiAlly={aiAlly}
+                        playerSelector={aiPlayerType}
+                        rlModelUrl={rlModelUrl}
                     />
                 );
             case SCENES.HOWTO:
@@ -942,6 +990,8 @@ const GridTanks = () => {
                 return <LeaderboardScene switchToMenu={switchToMenu} initialMode={leaderboardMode} />;
             case SCENES.CHANGELOG:
                 return <ChangelogScene switchToMenu={switchToMenu} />;
+            case SCENES.ADMIN:
+                return <AdminScene switchToMenu={switchToMenu} launchAiAlly={launchAiAlly} launchAiPlayer={launchAiPlayer} launchRlAgent={launchRlAgent} />;
             case SCENES.SCORE_SUBMISSION:
                 return (
                     <ScoreSubmissionScene

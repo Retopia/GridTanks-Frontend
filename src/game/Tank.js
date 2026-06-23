@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js-legacy';
 import { Bullet } from './bullets/Bullet.js';
 import { FireBullet } from './bullets/FireBullet.js';
 import { AStarPathfinder } from './AStarPathfinder.js';
+import { rand } from './gameRandom.js';
 export class Tank {
 
     constructor(x, y, color, id, width, height, speed, bulletType, maxBullets, shotDelayFunction, reflectedShotThreshold, predictiveDodgeDistanceThreshold) {
@@ -25,7 +26,7 @@ export class Tank {
 
         this.shotDelayAccumulator = 0;
         this.shotDelayFunction = shotDelayFunction;
-        this.shotDelay = Math.random() * (50 - 20) + 20; // All tanks shoot the first bullet fast
+        this.shotDelay = rand() * (50 - 20) + 20; // All tanks shoot the first bullet fast
 
         this.targetDestination = null;
 
@@ -186,7 +187,7 @@ export class Tank {
 
         // Randomly select one of the safe cells
         if (safeCells.length > 0) {
-            let randomIndex = Math.floor(Math.random() * safeCells.length);
+            let randomIndex = Math.floor(rand() * safeCells.length);
             return safeCells[randomIndex];
         }
 
@@ -567,7 +568,7 @@ export class Tank {
                     res.push(returnedBullet);
                 }
             } else {
-                const seed = Math.random();
+                const seed = rand();
                 // Randomize between shooting reflected and direct shot
                 if (seed >= this.reflectedShotThreshold) {
                     // Direct shot

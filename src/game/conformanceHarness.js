@@ -25,7 +25,7 @@ import { mulberry32 } from '../sim/mulberry32.js';
 
 // Identical to the scripted actions in gen-conformance.mjs, so the same seed
 // produces the same input stream the Python fixtures already validate against.
-function makeActions(seed, frames, playerX0) {
+function makeActions(seed, frames) {
     const rng = mulberry32(seed + 777);
     const actions = [];
     for (let f = 0; f < frames; f++) {
@@ -55,10 +55,8 @@ export async function runConformance(seed, level, frames, mapText) {
     game.updateMap(parsed);
     game.countdown = null; // skip the "Get Ready" freeze
     game.transition = null;
-    const spawnX = game.player.body.x;
-    const spawnY = game.player.body.y;
 
-    const actions = makeActions(seed, frames, spawnX);
+    const actions = makeActions(seed, frames);
 
     const gameTrace = [];
     for (let f = 0; f < frames; f++) {
@@ -133,7 +131,6 @@ export async function runConformance(seed, level, frames, mapText) {
 export async function runSuite(maps) {
     const results = [];
     for (const [seed, level] of [[12345, 1], [99, 1], [2026, 1], [7, 3]]) {
-        // eslint-disable-next-line no-await-in-loop
         results.push(await runConformance(seed, level, 120, maps[level]));
     }
     return results;

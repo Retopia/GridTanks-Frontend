@@ -202,6 +202,7 @@ export class Game {
         this.banner = null;
         this.transition = null;
         this.countdown = null;
+        this.levelResolutionPending = false;
         this.updateCountdown = null;
         this.shakeFrames = 0;
         this.shakeTotalFrames = 0;
@@ -1221,6 +1222,7 @@ export class Game {
         this.networkTankMap = new Map();
         this.networkBulletMap = new Map();
         this.nextBulletNetworkId = 1;
+        this.levelResolutionPending = false;
 
         let inputMap = loadedData.map;
         this.physicalMap = [];
@@ -1419,6 +1421,7 @@ export class Game {
         this.loadedLevel = true;
         this.totalEnemies = this.teamB.length
         this.refreshPlayerReferences();
+        this.levelResolutionPending = false;
 
         // The level/enemy intro is now shown by the React "Get Ready" overlay
         // that runs alongside the start-of-level countdown.
@@ -1512,6 +1515,7 @@ export class Game {
         this.effects = [];
         this.banner = null;
         this.countdown = null;
+        this.levelResolutionPending = false;
         if (this.updateCountdown) {
             this.updateCountdown(null);
         }
@@ -1583,10 +1587,12 @@ export class Game {
             const data = await response.json().catch(() => null);
             if (!response.ok) {
                 console.error('Failed to send game event:', response.status, data);
+                this.levelResolutionPending = false;
                 return null;
             }
 
             if (!data || typeof data !== 'object') {
+                this.levelResolutionPending = false;
                 return null;
             }
 
@@ -1645,6 +1651,7 @@ export class Game {
             return data;
         } catch (error) {
             console.error('Error sending game event:', error);
+            this.levelResolutionPending = false;
             return null;
         }
     }
@@ -1747,6 +1754,15 @@ export class Game {
             }
         }
 
+        // After the last enemy dies or the player team is wiped, freeze local
+        // simulation until the authoritative backend response starts the real
+        // transition. This prevents duplicate kill events from being counted
+        // against the next level before it has loaded.
+        if (this.levelResolutionPending) {
+            this.emitCoopSnapshotIfNeeded();
+            return;
+        }
+
         if (this.teamA.length === 0) {
             this.startLevelTransition('failed');
             return;
@@ -1845,14 +1861,21 @@ export class Game {
 
                 if (removedFromTeamB) {
                     // Enemy eliminated.
-                    this.sendGameEvent(collided.tank.id);
+                    const completedLevelLocally = this.teamB.length === 0;
+                    if (!this.levelResolutionPending) {
+                        if (completedLevelLocally) {
+                            this.levelResolutionPending = true;
+                        }
+                        this.sendGameEvent(collided.tank.id);
+                    }
                 } else if (removedFromTeamA) {
                     // A friendly (player or AI ally) died. As long as any
                     // teammate is still alive the level continues; only a full
                     // team wipe is a player defeat (level reset / run over).
                     // Reported as a player death (id 3) regardless of who fell
                     // last, so the AI ally's type is never logged as an enemy.
-                    if (this.teamA.length === 0) {
+                    if (this.teamA.length === 0 && !this.levelResolutionPending) {
+                        this.levelResolutionPending = true;
                         this.sendGameEvent(3);
                     }
                 }

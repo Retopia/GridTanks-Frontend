@@ -1768,7 +1768,7 @@ export class Game {
             return;
         }
 
-        const dangerReferencePlayer = this.teamA[0] || this.player;
+        const dangerReferencePlayer = this.teamA.find((tank) => tank?.body) || (this.player?.body ? this.player : null);
         if (dangerReferencePlayer && this.frameCount % 10 === 0) {
             this.updateGridDangerValues(this.allBullets, dangerReferencePlayer, 1.0, 1.0, 25);
         }
@@ -1776,6 +1776,9 @@ export class Game {
         // Loop through Team A tanks (players or allies)
         for (let t = 0; t < this.teamA.length; t++) {
             const tank = this.teamA[t];
+            if (!tank?.body || tank.isAlive?.() === false) {
+                continue;
+            }
             let firedBullets = null;
 
             if (tank instanceof Player) {
@@ -1818,6 +1821,9 @@ export class Game {
         // Loop through Team B tanks
         for (let t = 0; t < this.teamB.length; t++) {
             const tank = this.teamB[t];
+            if (!tank?.body || tank.isAlive?.() === false) {
+                continue;
+            }
             const firedBullets = tank.update(cappedDelta, this.physicalMap, this.player, this.collisionLines, this.allBullets, this.teamB, this.teamA, this.app)
 
             if (firedBullets && firedBullets.length > 0) {

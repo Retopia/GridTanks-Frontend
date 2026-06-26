@@ -486,12 +486,19 @@ export class Tank {
     }
 
     getClosestTarget(enemyTeam) {
-        let res = enemyTeam[0];
-        let distance = this.distance(new PIXI.Point(this.body.x, this.body.y),
-            new PIXI.Point(enemyTeam[0].body.x, enemyTeam[0].body.y));
+        const targets = (Array.isArray(enemyTeam) ? enemyTeam : [])
+            .filter((tank) => tank?.body && tank.isAlive?.() !== false);
 
-        for (let t = 1; t < enemyTeam.length; t++) {
-            let currTank = enemyTeam[t];
+        if (targets.length === 0) {
+            return null;
+        }
+
+        let res = targets[0];
+        let distance = this.distance(new PIXI.Point(this.body.x, this.body.y),
+            new PIXI.Point(res.body.x, res.body.y));
+
+        for (let t = 1; t < targets.length; t++) {
+            let currTank = targets[t];
             let currDistance = this.distance(new PIXI.Point(this.body.x, this.body.y),
                 new PIXI.Point(currTank.body.x, currTank.body.y));
 

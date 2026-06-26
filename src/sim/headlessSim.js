@@ -338,11 +338,16 @@ class Tank {
     }
 
     getClosestTarget(enemyTeam) {
-        let res = enemyTeam[0];
-        let best = distance(this.body, enemyTeam[0].body);
-        for (let t = 1; t < enemyTeam.length; t++) {
-            const d = distance(this.body, enemyTeam[t].body);
-            if (d < best) { best = d; res = enemyTeam[t]; }
+        const targets = (Array.isArray(enemyTeam) ? enemyTeam : [])
+            .filter((tank) => tank?.body && tank.alive !== false);
+
+        if (targets.length === 0) return null;
+
+        let res = targets[0];
+        let best = distance(this.body, res.body);
+        for (let t = 1; t < targets.length; t++) {
+            const d = distance(this.body, targets[t].body);
+            if (d < best) { best = d; res = targets[t]; }
         }
         return res;
     }

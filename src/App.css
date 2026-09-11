@@ -840,6 +840,45 @@
     margin-bottom: 14px;
 }
 
+.admin-activity-grid {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.admin-activity-block {
+    min-width: 0;
+}
+
+.admin-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.admin-activity-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.82rem;
+    color: #cbd5e1;
+}
+
+.admin-activity-mode {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.admin-activity-detail {
+    color: #a0aec0;
+}
+
 .admin-table-title {
     color: #ffffff;
     font-weight: 700;
@@ -866,6 +905,10 @@
     gap: 4px;
     max-height: 220px;
     overflow-y: auto;
+}
+
+.admin-submission-rows {
+    max-height: 360px;
 }
 
 .admin-row {

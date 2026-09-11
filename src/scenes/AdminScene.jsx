@@ -10,6 +10,13 @@ const TABLE_LABELS = {
     contacts: 'Contacts'
 };
 
+const GAME_MODE_LABELS = {
+    solo: 'Solo',
+    coop: 'Co-op',
+    endless: 'Endless',
+    coop_endless: 'Co-op Endless'
+};
+
 // Display name -> Game.js TANK_PRESETS key.
 const ALLY_TANKS = [
     { label: 'Brown', preset: 'BROWN' },
@@ -58,7 +65,11 @@ const AdminScene = ({ switchToMenu, launchAiAlly, launchAiPlayer, launchRlAgent 
                 throw new Error(`Failed to load records (${response.status})`);
             }
             const data = await response.json();
-            setRecords(data.tables || {});
+            setRecords({
+                ...(data.tables || {}),
+                leaderboard_submissions: data.leaderboard_submissions || [],
+                recent_games: data.recent_games || []
+            });
         } catch (err) {
             setRecordsError(err.message || 'Failed to load records.');
         } finally {
@@ -261,30 +272,52 @@ const AdminScene = ({ switchToMenu, launchAiAlly, launchAiPlayer, launchRlAgent 
 
                     {recordsError && <p className="flow-error">{recordsError}</p>}
 
-                    {records && Object.keys(TABLE_LABELS).map((tableKey) => {
-                        const rows = records[tableKey] || [];
-                        const isContacts = tableKey === 'contacts';
-                        return (
-                            <div key={tableKey} className="admin-table-block">
-                                <div className="admin-table-title">
-                                    {TABLE_LABELS[tableKey]} <span className="admin-table-count">({rows.length})</span>
+                    {records && (
+                        <>
+                            <div className="admin-activity-grid">
+                                <div className="admin-activity-block">
+                                    <div className="admin-table-title">
+                                        Recent Games <span className="admin-table-count">({(records.recent_games || []).length})</span>
+                                    </div>
+                                    {(records.recent_games || []).length === 0 ? (
+                                        <div className="admin-empty">No games recorded yet.</div>
+                                    ) : (
+                                        <div className="admin-activity-list">
+                                            {records.recent_games.map((game) => (
+                                                <div key={game.id} className="admin-activity-row">
+                                                    <span className="admin-activity-mode">
+                                                        {GAME_MODE_LABELS[game.mode] || game.mode}
+                                                    </span>
+                                                    <span className="admin-activity-detail">
+                                                        {game.status}
+                                                    </span>
+                                                    <span className="admin-row-date">{game.date}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                {rows.length === 0 ? (
-                                    <div className="admin-empty">No entries.</div>
+                            </div>
+
+                            <div className="admin-table-block">
+                                <div className="admin-table-title">
+                                    Leaderboard Submissions <span className="admin-table-count">({(records.leaderboard_submissions || []).length})</span>
+                                </div>
+                                <div className="admin-panel-note">Newest first across all game modes.</div>
+                                {(records.leaderboard_submissions || []).length === 0 ? (
+                                    <div className="admin-empty">No submissions.</div>
                                 ) : (
-                                    <div className="admin-rows">
-                                        {rows.map((row) => (
-                                            <div key={row.id} className="admin-row">
+                                    <div className="admin-rows admin-submission-rows">
+                                        {records.leaderboard_submissions.map((row) => (
+                                            <div key={`${row.table_key}:${row.id}`} className="admin-row">
                                                 <span className="admin-row-name">{row.username}</span>
                                                 <span className="admin-row-detail">
-                                                    {isContacts
-                                                        ? row.email
-                                                        : `${row.completed_levels} ${tableKey.includes('endless') ? 'waves' : 'lvls'} · ${row.time} · ${row.deaths} deaths`}
+                                                    {(GAME_MODE_LABELS[row.mode] || row.mode)} · {row.completed_levels} {row.mode.includes('endless') ? 'waves' : 'lvls'} · {row.time} · {row.deaths} deaths
                                                 </span>
                                                 <span className="admin-row-date">{row.date}</span>
                                                 <button
                                                     className="admin-delete-button"
-                                                    onClick={() => handleDelete(tableKey, row.id, row.username)}
+                                                    onClick={() => handleDelete(row.table_key, row.id, row.username)}
                                                     title="Delete"
                                                 >
                                                     {'✕'}
@@ -294,8 +327,34 @@ const AdminScene = ({ switchToMenu, launchAiAlly, launchAiPlayer, launchRlAgent 
                                     </div>
                                 )}
                             </div>
-                        );
-                    })}
+
+                            <div className="admin-table-block">
+                                <div className="admin-table-title">
+                                    Contacts <span className="admin-table-count">({(records.contacts || []).length})</span>
+                                </div>
+                                {(records.contacts || []).length === 0 ? (
+                                    <div className="admin-empty">No entries.</div>
+                                ) : (
+                                    <div className="admin-rows">
+                                        {records.contacts.map((row) => (
+                                            <div key={row.id} className="admin-row">
+                                                <span className="admin-row-name">{row.username}</span>
+                                                <span className="admin-row-detail">{row.email}</span>
+                                                <span className="admin-row-date">{row.date}</span>
+                                                <button
+                                                    className="admin-delete-button"
+                                                    onClick={() => handleDelete('contacts', row.id, row.username)}
+                                                    title="Delete"
+                                                >
+                                                    {'✕'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <button className="back-button" onClick={switchToMenu}>

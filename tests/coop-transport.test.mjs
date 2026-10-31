@@ -7,6 +7,7 @@ const t = new CoopTransport({ role: 'guest', runId: 'run', Peer: null,
     signal() {}, relay: (m) => { relayed.push(m); return true; },
     receive: (m) => received.push(m), status() {} });
 t.start();
+assert.equal(t.timer, undefined, 'disabled WebRTC starts no negotiation or heartbeat timer');
 assert.equal(t.send('coop_input', { keys: { w: true } }), true);
 assert.equal(relayed.length, 1, 'unsupported WebRTC falls back');
 const packet = (seq, run_id = 'run', type = 'coop_snapshot') => ({ seq, run_id, type, stream: 'peer', payload: {} });

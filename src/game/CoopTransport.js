@@ -13,6 +13,7 @@ export class CoopTransport {
 
     start() {
         this.status({ path: 'Server relay', rtt: null });
+        if (!this.Peer) return;
         this.hello();
         this.timer = setInterval(() => {
             if (this.closed) return;

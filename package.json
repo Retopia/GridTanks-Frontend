@@ -4,6 +4,8 @@
   "version": "1.2.0",
   "type": "module",
   "scripts": {
+    "test:coop": "node tests/coop-transport.test.mjs",
+    "test:coop-browser": "node tests/coop-browser-smoke.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

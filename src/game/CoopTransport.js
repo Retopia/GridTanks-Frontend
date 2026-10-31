@@ -146,9 +146,8 @@ export class CoopTransport {
     send(type, payload) {
         if (this.closed) return false;
         const message = { type, payload, run_id: this.runId, stream: this.id, seq: ++this.sequence };
-        const data = JSON.stringify(message);
         if (this.channel?.readyState === 'open' && Date.now() - this.lastPong < 6000 && this.channel.bufferedAmount < 65536) {
-            try { this.channel.send(data); return true; } catch { /* Fall back without interrupting the run. */ }
+            try { this.channel.send(JSON.stringify(message)); return true; } catch { /* Fall back without interrupting the run. */ }
         }
         // Retry failed negotiations, but never stall gameplay while ICE is connecting.
         if (this.pc && this.channel?.readyState !== 'open' && Date.now() - this.startedAt > 15000) this.resetPeer();

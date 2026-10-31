@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { chromium } from 'playwright';
+// Optional browser tooling stays out of the application's dependency tree.
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const source = await readFile(new URL('../src/game/CoopTransport.js', import.meta.url));
 const server = createServer((req, res) => {
     res.setHeader('Content-Type', req.url === '/transport.js' ? 'text/javascript' : 'text/html');

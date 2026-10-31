@@ -34,11 +34,9 @@ Tests:
 
 ```sh
 npm run test:coop
-npx playwright install chromium
-npm run test:coop-browser
 ```
 
-`CHROMIUM_PATH` optionally selects an already installed Chromium executable.
-The browser test uses two independent pages and real ICE/data channels, checks
-bidirectional gameplay without relay traffic, and forces a channel failure to
-verify relay fallback.
+The optional `npm run test:coop-browser` uses Playwright from your test environment
+(not an app dependency). Set `PLAYWRIGHT_MODULE` to an existing Playwright module
+path if needed; `CHROMIUM_PATH` selects an existing Chromium executable. It checks
+real bidirectional P2P, relay fallback, and automatic reconnection in two pages.

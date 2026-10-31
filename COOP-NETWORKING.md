@@ -1,5 +1,9 @@
 # Co-op networking
 
+P2P is currently disabled by default. Gameplay uses the existing WebSocket server
+relay. To opt in again, set frontend build variable `VITE_COOP_P2P=true` and rebuild.
+The WebRTC implementation and backend signaling remain available but idle while off.
+
 The host still simulates the game. Guest inputs and host snapshots prefer a
 WebRTC data channel; room membership, signaling, run lifecycle, level verification,
 and leaderboard submission continue using the authenticated backend.

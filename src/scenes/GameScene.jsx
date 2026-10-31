@@ -241,6 +241,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 return true;
             };
             const transport = new CoopTransport({
+                Peer: import.meta.env.VITE_COOP_P2P === 'true' ? globalThis.RTCPeerConnection : null,
                 role: coopSession.role,
                 runId: activeRunId,
                 signal: (payload) => sendRelay({ type: 'rtc_signal', run_id: activeRunId, payload }),

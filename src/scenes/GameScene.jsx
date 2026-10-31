@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Game } from '../game/Game';
 import { soundManager } from '../game/SoundManager';
+import { CoopTransport } from '../game/CoopTransport';
 
 const toWebSocketBaseUrl = (httpBaseUrl) => {
     if (!httpBaseUrl) {
@@ -42,12 +43,14 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
     const roomSocketRef = useRef(null);
     const guestInputIntervalRef = useRef(null);
     const lastGuestInputRef = useRef(null);
+    const transportRef = useRef(null);
 
     const [showPerformanceWarning, setShowPerformanceWarning] = useState(false);
     const [isMuted, setIsMuted] = useState(soundManager.muted);
     const [countdown, setCountdown] = useState(null);
     const [runId, setRunId] = useState(null);
     const [coopSocketStatus, setCoopSocketStatus] = useState('disconnected');
+    const [coopNetwork, setCoopNetwork] = useState({ path: 'Server relay', rtt: null });
     const [gameStats, setGameStats] = useState({
         currentLevel: 1,
         timer: '0:00',
@@ -71,6 +74,8 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
     const isCoopGuest = isCoopSession && coopSession.role === 'guest';
 
     const cleanupRoomSocket = () => {
+        transportRef.current?.close();
+        transportRef.current = null;
         if (guestInputIntervalRef.current) {
             clearInterval(guestInputIntervalRef.current);
             guestInputIntervalRef.current = null;
@@ -230,22 +235,35 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             roomSocketRef.current = roomSocket;
             setCoopSocketStatus('connecting');
 
+            const sendRelay = (message) => {
+                if (roomSocketRef.current !== roomSocket || roomSocket.readyState !== WebSocket.OPEN || roomSocket.bufferedAmount > 262144) return false;
+                roomSocket.send(JSON.stringify(message));
+                return true;
+            };
+            const transport = new CoopTransport({
+                role: coopSession.role,
+                runId: activeRunId,
+                signal: (payload) => sendRelay({ type: 'rtc_signal', run_id: activeRunId, payload }),
+                relay: sendRelay,
+                receive: (message) => {
+                    if (isCoopHost) gameInstance.setRemoteInput(message.payload || {});
+                    else gameInstance.applyCoopSnapshot(message.payload || {});
+                },
+                status: setCoopNetwork,
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+            });
+            transportRef.current = transport;
+
             if (isCoopHost) {
                 gameInstance.setCoopSnapshotEmitter((snapshot) => {
-                    if (roomSocket.readyState !== WebSocket.OPEN) {
-                        return;
-                    }
-
-                    roomSocket.send(JSON.stringify({
-                        type: 'coop_snapshot',
-                        payload: snapshot
-                    }));
+                    transport.send('coop_snapshot', snapshot);
                 });
             }
 
             roomSocket.onopen = () => {
                 if (roomSocketRef.current === roomSocket) {
                     setCoopSocketStatus('connected');
+                    transport.start();
                 }
             };
 
@@ -256,6 +274,14 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 } catch {
                     return;
                 }
+                if (!parsed || typeof parsed !== 'object') return;
+
+                if (parsed.type === 'rtc_config' && parsed.run_id === activeRunId && Array.isArray(parsed.ice_servers)) {
+                    transport.iceServers = parsed.ice_servers;
+                }
+                if (parsed.type === 'rtc_signal' && parsed.run_id === activeRunId) {
+                    transport.onSignal(parsed.payload);
+                }
 
                 if (parsed.type === 'error') {
                     setCoopSocketStatus('error');
@@ -263,11 +289,11 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                 }
 
                 if (parsed.type === 'coop_input' && isCoopHost) {
-                    gameRef.current?.setRemoteInput(parsed.payload || {});
+                    transport.deliver(parsed);
                 }
 
                 if (parsed.type === 'coop_snapshot' && isCoopGuest) {
-                    gameRef.current?.applyCoopSnapshot(parsed.payload || {});
+                    transport.deliver(parsed);
                 }
 
                 if (parsed.type === 'run_finished' && isCoopGuest) {
@@ -290,6 +316,7 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
             };
 
             if (isCoopGuest) {
+                let lastSentAt = 0;
                 guestInputIntervalRef.current = setInterval(() => {
                     const socket = roomSocketRef.current;
                     const game = gameRef.current;
@@ -299,15 +326,13 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
                     }
 
                     const payload = game.getLocalInputState();
-                    if (areInputStatesEqual(lastGuestInputRef.current, payload)) {
+                    if (areInputStatesEqual(lastGuestInputRef.current, payload) && Date.now() - lastSentAt < 250) {
                         return;
                     }
-                    lastGuestInputRef.current = payload;
-
-                    socket.send(JSON.stringify({
-                        type: 'coop_input',
-                        payload
-                    }));
+                    if (transport.send('coop_input', payload)) {
+                        lastGuestInputRef.current = payload;
+                        lastSentAt = Date.now();
+                    }
                 }, 16);
             }
         };
@@ -361,8 +386,9 @@ function GameScene({ switchToMenu, switchToScoreSubmission, sessionMode = 'solo'
 
                     {isCoopSession && (
                         <div className="sidebar-section">
-                            <div className="sidebar-title">Co-op Socket</div>
-                            <div className="sidebar-value">{coopSocketStatus}</div>
+                            <div className="sidebar-title">Co-op Connection</div>
+                            <div className="sidebar-value">{coopNetwork.path}</div>
+                            <div>{coopNetwork.rtt === null ? coopSocketStatus : `${coopNetwork.rtt} ms RTT`}</div>
                         </div>
                     )}
 
